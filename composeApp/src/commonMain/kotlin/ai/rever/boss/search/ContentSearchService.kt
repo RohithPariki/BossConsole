@@ -597,15 +597,14 @@ class ContentSearchService(
                 if ('\u0000' in text) return FileReplaceResult(file.path, 0, "binary file")
                 if ('\uFFFD' in text) return FileReplaceResult(file.path, 0, "not valid UTF-8")
 
-                // with a serialised write transaction; it reads under the lock
-                // but does not call writeAtomically.
-                //
                 // The authoritative read (lockedText) is taken INSIDE the lock
                 // so we operate on content that no concurrent holder has already
                 // modified. The pre-checks above filter the common fast-exit
                 // cases; the re-read covers the rare window where the file
-                // changed between the pre-read and lock acquisition. No write
-                // is based on the pre-lock snapshot.
+                // changed between the pre-read and lock acquisition. The
+                // authoritative read, compute, and writeAtomically all happen
+                // inside this per-file lock. No write is based on the pre-lock
+                // snapshot.
                 replacementCoordinator.withFileLock(canonicalOrPath(file)) {
                     val lockedText = file.readText()
                     if ('\u0000' in lockedText) return@withFileLock FileReplaceResult(file.path, 0, "binary file")
@@ -625,8 +624,6 @@ class ContentSearchService(
             FileReplaceResult(file.path, 0, e.message ?: "replace failed")
         }
     }
-
-
 
     /**
      * Replace in a live buffer as ONE version-guarded, undoable edit.
