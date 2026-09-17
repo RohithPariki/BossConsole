@@ -50,6 +50,7 @@ class ContentSearchService(
     // The PROVIDER is nullable too: no provider means no Main hop at all, which
     // is what unit tests and non-UI hosts (no Compose snapshot to snapshot) get.
     private val openEditorPathsProvider: (() -> Set<String>?)? = null,
+    private val replacementCoordinator: ClosedFileReplacementCoordinator = GlobalClosedFileReplacementCoordinator,
 ) : ProjectSearchProvider {
     private val logger = BossLogger.forComponent("ContentSearchService")
 
@@ -595,9 +596,28 @@ class ContentSearchService(
                 val text = file.readText()
                 if ('\u0000' in text) return FileReplaceResult(file.path, 0, "binary file")
                 if ('\uFFFD' in text) return FileReplaceResult(file.path, 0, "not valid UTF-8")
-                val outcome = computeReplaced(text, regex, replacement, isRegex, isCancelled)
-                if (!dryRun && outcome.count > 0) writeAtomically(file, outcome.text)
-                FileReplaceResult(file.path, outcome.count, null)
+
+                // with a serialised write transaction; it reads under the lock
+                // but does not call writeAtomically.
+                //
+                // The authoritative read (lockedText) is taken INSIDE the lock
+                // so we operate on content that no concurrent holder has already
+                // modified. The pre-checks above filter the common fast-exit
+                // cases; the re-read covers the rare window where the file
+                // changed between the pre-read and lock acquisition. No write
+                // is based on the pre-lock snapshot.
+                replacementCoordinator.withFileLock(canonicalOrPath(file)) {
+                    val lockedText = file.readText()
+                    if ('\u0000' in lockedText) return@withFileLock FileReplaceResult(file.path, 0, "binary file")
+                    if ('\uFFFD' in lockedText) return@withFileLock FileReplaceResult(file.path, 0, "not valid UTF-8")
+
+                    val outcome = computeReplaced(lockedText, regex, replacement, isRegex, isCancelled)
+
+                    if (!dryRun && outcome.count > 0) {
+                        writeAtomically(file, outcome.text)
+                    }
+                    FileReplaceResult(file.path, outcome.count, null)
+                }
             }
         } catch (e: CancellationException) {
             throw e
@@ -605,6 +625,8 @@ class ContentSearchService(
             FileReplaceResult(file.path, 0, e.message ?: "replace failed")
         }
     }
+
+
 
     /**
      * Replace in a live buffer as ONE version-guarded, undoable edit.
