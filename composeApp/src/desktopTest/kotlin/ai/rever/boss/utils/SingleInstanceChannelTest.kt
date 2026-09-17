@@ -714,6 +714,44 @@ class SingleInstanceChannelTest {
     }
 
     @Test
+    fun `tool schema caching preserves semantic parsing and handles mutations correctly`() {
+        val schemaA = """{"type":"object","properties":{"a":{"type":"string"}}}"""
+        val schemaB = """{"type":"object","properties":{"b":{"type":"string"}}}"""
+        val malformed = "{malformed json"
+
+        fun createTool(name: String, schema: String) =
+            ai.rever.boss.plugin.api.RegisteredMcpTool(
+                "pluginId",
+                ai.rever.boss.plugin.api.McpToolDefinition(
+                    name = name,
+                    description = "desc",
+                    inputSchema = schema,
+                    handler = { ai.rever.boss.plugin.api.McpToolResult("ok") }
+                )
+            )
+
+        // 1. the same schema string is served correctly from cache
+        val tool1 = createTool("tool1", schemaA)
+        val tool2 = createTool("tool2", schemaA) // Should hit cache
+        val encoded12 = Json.parseToJsonElement(encodeMcpTools(listOf(tool1, tool2))) as kotlinx.serialization.json.JsonArray
+
+        assertEquals(2, encoded12.size)
+        assertEquals(Json.parseToJsonElement(schemaA), encoded12[0].jsonObject["inputSchema"])
+        assertEquals(Json.parseToJsonElement(schemaA), encoded12[1].jsonObject["inputSchema"])
+
+        // 2. a changed schema string produces a different parsed result
+        val tool3 = createTool("tool3", schemaB)
+        val encoded3 = Json.parseToJsonElement(encodeMcpTools(listOf(tool3))) as kotlinx.serialization.json.JsonArray
+        assertEquals(Json.parseToJsonElement(schemaB), encoded3[0].jsonObject["inputSchema"])
+        assertNotEquals(encoded12[0].jsonObject["inputSchema"], encoded3[0].jsonObject["inputSchema"])
+
+        // 3. malformed schema still uses the existing JsonPrimitive fallback
+        val tool4 = createTool("tool4", malformed)
+        val encoded4 = Json.parseToJsonElement(encodeMcpTools(listOf(tool4))) as kotlinx.serialization.json.JsonArray
+        assertEquals(malformed, encoded4[0].jsonObject["inputSchema"]?.jsonPrimitive?.content)
+    }
+
+    @Test
     fun `oversized tool result reports size limit rather than offline desktop`() {
         SingleInstanceManager.mcpInvokeHandlerOverride = { _, _ ->
             ai.rever.boss.plugin.api
