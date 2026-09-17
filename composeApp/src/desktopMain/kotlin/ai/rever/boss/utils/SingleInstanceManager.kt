@@ -922,11 +922,15 @@ internal fun encodeMcpTools(tools: List<ai.rever.boss.plugin.api.RegisteredMcpTo
         },
     ).toString()
 
+private val schemaCache = java.util.concurrent.ConcurrentHashMap<String, kotlinx.serialization.json.JsonElement>()
+
 private fun parseToolSchema(schema: String): kotlinx.serialization.json.JsonElement =
-    try {
-        Json.parseToJsonElement(schema)
-    } catch (_: IllegalArgumentException) {
-        JsonPrimitive(schema)
+    schemaCache.getOrPut(schema) {
+        try {
+            Json.parseToJsonElement(schema)
+        } catch (_: IllegalArgumentException) {
+            JsonPrimitive(schema)
+        }
     }
 
 internal fun encodeMcpResult(
