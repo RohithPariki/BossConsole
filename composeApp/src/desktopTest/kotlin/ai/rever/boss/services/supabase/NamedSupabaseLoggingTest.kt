@@ -1,6 +1,7 @@
 package ai.rever.boss.services.supabase
 
 import ai.rever.boss.plugin.logging.BossLogger
+import ai.rever.boss.plugin.logging.LogCategory
 import ai.rever.boss.plugin.logging.LogEntry
 import ai.rever.boss.plugin.logging.LogListener
 import io.github.jan.supabase.logging.LogLevel
@@ -10,8 +11,10 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import ai.rever.boss.plugin.logging.LogLevel as BossLogLevel
 
 class NamedSupabaseLoggingTest {
+    private var previousGlobalLevel = BossLogLevel.INFO
     private val capturedEntries = mutableListOf<LogEntry>()
     private val listener =
         LogListener { entry ->
@@ -23,14 +26,17 @@ class NamedSupabaseLoggingTest {
     @BeforeTest
     fun setUp() {
         capturedEntries.clear()
-        BossLogger.setGlobalLevel(ai.rever.boss.plugin.logging.LogLevel.DEBUG)
+        previousGlobalLevel = BossLogger.globalLevel
+        BossLogger.setGlobalLevel(BossLogLevel.DEBUG)
+        BossLogger.clearCategoryLevel(LogCategory.NETWORK)
         BossLogger.addListener(listener)
     }
 
     @AfterTest
     fun tearDown() {
         BossLogger.removeListener(listener)
-        BossLogger.setGlobalLevel(ai.rever.boss.plugin.logging.LogLevel.INFO)
+        BossLogger.clearCategoryLevel(LogCategory.NETWORK)
+        BossLogger.setGlobalLevel(previousGlobalLevel)
         capturedEntries.clear()
     }
 
@@ -42,7 +48,8 @@ class NamedSupabaseLoggingTest {
                 "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIn0." +
                 "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
         val rawMessage =
-            """Error while sending message {"event":"phx_join","topic":"realtime:public","payload":{"access_token":"$sensitiveJwt"}}"""
+            """Error while sending message {"event":"phx_join","topic":"realtime:public",""" +
+                """"payload":{"access_token":"$sensitiveJwt"}}"""
 
         processor.processLog(
             level = LogLevel.WARNING,
@@ -113,7 +120,6 @@ class NamedSupabaseLoggingTest {
             message = "Transient trace event",
         )
 
-        val entry = synchronized(capturedEntries) { capturedEntries.lastOrNull() }
-        assertTrue(entry == null || !entry.message.contains("Transient trace event"))
+        assertTrue(synchronized(capturedEntries) { capturedEntries.isEmpty() })
     }
 }
