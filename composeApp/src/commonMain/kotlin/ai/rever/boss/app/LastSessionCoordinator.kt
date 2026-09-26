@@ -88,9 +88,9 @@ class LastSessionCoordinator internal constructor(
         windowId: String,
         isFirstWindow: Boolean,
         /**
-         * Every Space this window is running, and which was showing, or null for a session that
-         * needs no set - fewer than two Spaces, which `Last_Session.json` already records on its
-         * own. Invoked at teardown alongside [extractLayout], so it must read live state too.
+         * Every Space this window is running, and which was showing. Even one Space produces a
+         * set to preserve its id; an empty session or unmatched active id produces null. Invoked
+         * at teardown alongside [extractLayout], so it must read live state too.
          */
         extractSet: () -> LastSessionSet? = { null },
         canSave: () -> Boolean = { true },

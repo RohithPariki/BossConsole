@@ -881,9 +881,9 @@ private const val LAYOUT_SETTLE_MS = 2000L
 
 /**
  * Every Space this window is running, and which one is showing - so a restart brings the whole
- * window back rather than the one Space that happened to be on screen. Null for a window running
- * fewer than two, which the single-Space record already describes on its own; see `sessionSetOf`.
- * One expression for the shutdown write and the in-session write, so the two cannot drift.
+ * window back rather than the one Space that happened to be on screen. Even one Space needs a
+ * set to preserve its id; an empty session or unmatched active id produces no set. The same
+ * expression serves shutdown and in-session writes, so the two cannot drift.
  */
 private fun liveSessionSet(
     splitViewState: SplitViewState,
