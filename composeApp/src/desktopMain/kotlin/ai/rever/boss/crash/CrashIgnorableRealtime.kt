@@ -7,6 +7,7 @@ package ai.rever.boss.crash
  * Kept out of [CrashHandler] so each rule carries its evidence comment beside
  * the match, and so the crash handler stays under detekt's size gate.
  */
+
 /**
  * supabase-kt 3.8.0 can resume scheduleRejoin during the socket reconnect delay.
  * Its unsubscribe then reads the cleared socket before subscribe can wait for
