@@ -135,14 +135,17 @@ class CrashHandlerIgnorableTest {
                 },
             ),
         )
-        val appCall =
-            IllegalStateException("Websocket not yet initialized").apply {
-                stackTrace =
-                    arrayOf(
-                        StackTraceElement("ai.rever.boss.Application", "sendHeartbeat", "Application.kt", 1),
-                    ) + frames.takeLast(1)
+        val empty = realtimeHeartbeatRace().apply { stackTrace = emptyArray() }
+        assertFalse(CrashHandler.isIgnorable(empty))
+        // Pins the deliberate two-frame boundary: an app frame past the prefix stays
+        // ignorable, because only the library's own getter throws this message and the
+        // third frame varies with coroutine stack recovery.
+        val appFramePastPrefix =
+            realtimeHeartbeatRace().apply {
+                stackTrace = stackTrace.take(2).toTypedArray() +
+                    StackTraceElement("ai.rever.boss.Application", "onCrashed", "Application.kt", 1)
             }
-        assertFalse(CrashHandler.isIgnorable(appCall))
+        assertTrue(CrashHandler.isIgnorable(appFramePastPrefix))
     }
 
     @Test
