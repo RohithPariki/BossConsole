@@ -6,7 +6,7 @@ import ai.rever.boss.plugin.api.McpToolProvider
 import ai.rever.boss.plugin.api.McpToolResult
 
 internal class AppUpdateMcpToolProvider(
-    private val commands: AppUpdateCommands = AppUpdateCommands(ManagedAppUpdateBackend()),
+    private val commands: AppUpdateCommands = sharedCommands,
 ) : McpToolProvider {
     override val providerId: String = "boss-app-updates"
 
@@ -40,6 +40,8 @@ internal class AppUpdateMcpToolProvider(
         )
 
     private companion object {
+        val sharedCommands by lazy { AppUpdateCommands(ManagedAppUpdateBackend()) }
+
         const val EMPTY_SCHEMA = """{"type":"object","properties":{},"additionalProperties":false}"""
         val INSTALL_SCHEMA =
             """
