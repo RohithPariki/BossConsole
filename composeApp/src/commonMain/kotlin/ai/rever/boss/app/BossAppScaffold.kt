@@ -1155,8 +1155,8 @@ private fun sidebarTitleActions(
             ),
         )
         addAll(nativeSessionTitleActions(state))
-        add(NativeTitleBarAction("search", "Search", "magnifyingglass") { state.showGlobalSearchDialog = true })
         addAll(nativeTerminalTitleActions(state.windowId))
+        add(NativeTitleBarAction("search", "Search", "magnifyingglass") { state.showGlobalSearchDialog = true })
         add(NativeTitleBarAction("tools", "Tools menu", "square.grid.2x2") { state.showToolLauncherDialog = true })
         state.draggablePanelComponent.toolboxSidebarItem()?.let { item ->
             add(
