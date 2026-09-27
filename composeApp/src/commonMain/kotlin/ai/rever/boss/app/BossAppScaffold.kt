@@ -1117,7 +1117,7 @@ private fun SidebarTitleBar(
         val sidebarWidth = if (expanded) appearance.tabBarVerticalWidth + 8f else 0f
         val actions =
             sidebarTitleActions(state, toggleSidebar, sidebarWidth, sidebarLeading, sidebarBelowTopChrome) +
-                spaceAction + nativeBrowserTitleActions(state) + nativeTerminalTitleActions(state.windowId)
+                spaceAction + nativeBrowserTitleActions(state)
         val nativeReady = sidebarInHeader && NativeSidebarTitleBar(title, actions)
         NativeBrowserHostAvailability(state.windowId, nativeReady)
         NativeTerminalHostAvailability(state.windowId, nativeReady)
@@ -1134,6 +1134,7 @@ private fun SidebarTitleBar(
 }
 
 /** Native buttons call the same window-scoped entry points as their Compose counterparts. */
+@Composable
 private fun sidebarTitleActions(
     state: BossAppState,
     toggleSidebar: () -> Unit,
@@ -1155,6 +1156,7 @@ private fun sidebarTitleActions(
         )
         addAll(nativeSessionTitleActions(state))
         add(NativeTitleBarAction("search", "Search", "magnifyingglass") { state.showGlobalSearchDialog = true })
+        addAll(nativeTerminalTitleActions(state.windowId))
         add(NativeTitleBarAction("tools", "Tools menu", "square.grid.2x2") { state.showToolLauncherDialog = true })
         state.draggablePanelComponent.toolboxSidebarItem()?.let { item ->
             add(

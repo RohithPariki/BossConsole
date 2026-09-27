@@ -1,5 +1,7 @@
 package ai.rever.boss.plugin.ui
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -20,6 +22,28 @@ object TerminalTitleBarBridge {
         val active: Boolean,
         val actions: List<TerminalTitleBarAction>,
     )
+
+    private val providers = mutableStateMapOf<Any, @Composable (String) -> Unit>()
+
+    fun registerProvider(
+        owner: Any,
+        content: @Composable (String) -> Unit,
+    ) {
+        providers[owner] = content
+    }
+
+    fun unregisterProvider(owner: Any) {
+        providers.remove(owner)
+    }
+
+    @Composable
+    fun Content(windowId: String) {
+        if (isHosted(windowId)) {
+            providers.entries.lastOrNull()?.let { (owner, content) ->
+                key(owner, windowId) { content(windowId) }
+            }
+        }
+    }
 
     private val windows = mutableStateMapOf<String, Boolean>()
     private val entries = mutableStateMapOf<Any, Entry>()

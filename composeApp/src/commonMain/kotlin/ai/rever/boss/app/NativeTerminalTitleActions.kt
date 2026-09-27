@@ -12,7 +12,7 @@ internal fun nativeTerminalTitleActions(windowId: String): List<NativeTitleBarAc
             id = "terminal_${it.id}",
             label = it.label,
             symbol = it.symbol.takeUnless { symbol -> symbol == "mcp" },
-            icon = it.icon,
+            icon = if (it.symbol == "mcp") it.icon else null,
             active = it.active,
             onClick = it.onClick,
         )
@@ -23,6 +23,7 @@ internal fun NativeTerminalHostAvailability(
     windowId: String,
     ready: Boolean,
 ) {
+    TerminalTitleBarBridge.Content(windowId)
     DisposableEffect(windowId, ready) {
         TerminalTitleBarBridge.hostWindow(windowId, ready)
         onDispose { TerminalTitleBarBridge.hostWindow(windowId, false) }

@@ -4,12 +4,72 @@ import ai.rever.boss.plugin.ui.TerminalTitleBarAction
 import ai.rever.boss.plugin.ui.TerminalTitleBarBridge
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.runtime.AbstractApplier
+import androidx.compose.runtime.Composition
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.Recomposer
+import androidx.compose.runtime.SideEffect
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class TerminalTitleBarBridgeTest {
+    @Test
+    fun `provider owns controls without a terminal composition and cleans up with window`() =
+        runTest {
+            val provider = Any()
+            val actionsOwner = Any()
+            val recomposer = Recomposer(coroutineContext)
+            val composition = Composition(EmptyApplier(), recomposer)
+            val action = TerminalTitleBarAction("call", "Call", "phone", Icons.Default.Call, false) {}
+            try {
+                TerminalTitleBarBridge.hostWindow("provider-window", true)
+                TerminalTitleBarBridge.registerProvider(provider) { windowId ->
+                    SideEffect { TerminalTitleBarBridge.publish(windowId, actionsOwner, true, listOf(action)) }
+                    DisposableEffect(Unit) { onDispose { TerminalTitleBarBridge.remove(actionsOwner) } }
+                }
+                composition.setContent { TerminalTitleBarBridge.Content("provider-window") }
+                assertEquals(listOf(action), TerminalTitleBarBridge.actions("provider-window"))
+                assertTrue(TerminalTitleBarBridge.actions("other-window").isEmpty())
+                TerminalTitleBarBridge.unregisterProvider(provider)
+                composition.setContent { TerminalTitleBarBridge.Content("provider-window") }
+                assertTrue(TerminalTitleBarBridge.actions("provider-window").isEmpty())
+            } finally {
+                composition.dispose()
+                recomposer.cancel()
+                TerminalTitleBarBridge.unregisterProvider(provider)
+                TerminalTitleBarBridge.remove(actionsOwner)
+                TerminalTitleBarBridge.hostWindow("provider-window", false)
+            }
+        }
+
+    private class EmptyApplier : AbstractApplier<Unit>(Unit) {
+        override fun insertTopDown(
+            index: Int,
+            instance: Unit,
+        ) = Unit
+
+        override fun insertBottomUp(
+            index: Int,
+            instance: Unit,
+        ) = Unit
+
+        override fun remove(
+            index: Int,
+            count: Int,
+        ) = Unit
+
+        override fun move(
+            from: Int,
+            to: Int,
+            count: Int,
+        ) = Unit
+
+        override fun onClear() = Unit
+    }
+
     @Test
     fun `actions are isolated by window and removed with their owner`() {
         val first = Any()
