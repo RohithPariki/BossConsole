@@ -85,6 +85,17 @@ internal class MacAddressEditing {
         selector: String,
         shift: Boolean,
     ): Boolean {
+        if (selector == "insertNewline:") {
+            submit()
+            return true
+        }
+        return editingCommand(selector, shift)
+    }
+
+    private fun editingCommand(
+        selector: String,
+        shift: Boolean,
+    ): Boolean {
         val model = input?.address ?: return false
         val command =
             when (selector) {
