@@ -84,13 +84,22 @@ internal class MacAddressEditing {
     fun command(
         selector: String,
         shift: Boolean,
-    ): Boolean {
-        if (selector == "insertNewline:") {
-            submit()
-            return true
+        onSubmit: () -> Unit = ::submit,
+    ): Boolean =
+        when {
+            closed || input == null -> {
+                false
+            }
+
+            selector == "insertNewline:" -> {
+                onSubmit()
+                true
+            }
+
+            else -> {
+                editingCommand(selector, shift)
+            }
         }
-        return editingCommand(selector, shift)
-    }
 
     private fun editingCommand(
         selector: String,
