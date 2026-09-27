@@ -7,8 +7,10 @@
 --
 -- Client statements run under `set local role authenticated` with a JWT claim,
 -- the same privileges PostgREST applies; fixtures are staged as the test owner.
+-- TRUNCATE, REFERENCES and TRIGGER (also in GRANT ALL, and not subject to RLS)
+-- are revoked for client roles as well.
 begin;
-select plan(18);
+select plan(20);
 
 insert into auth.users (id, email) values
     ('e1a00000-0000-4000-8000-000000000001', 'passkey-owner@pgtap.test');
@@ -56,6 +58,14 @@ select throws_ok(
        where credential_id = 'cred-original' $$,
     '42501', null,
     'the auto-updatable view no longer writes the base table for clients');
+
+-- ---- The non-row privileges from GRANT ALL are gone too. TRUNCATE ignores
+-- RLS entirely, so before this migration a reachable client TRUNCATE erased
+-- every user's passkeys.
+select throws_ok(
+    $$ truncate table public.user_passkeys $$,
+    '42501', null,
+    'a client cannot TRUNCATE the table (row-level security does not apply to TRUNCATE)');
 
 -- ---- Client reads still work, on both surfaces.
 select lives_ok(
@@ -118,6 +128,14 @@ select ok(
     has_table_privilege('service_role', 'public.user_passkeys', 'INSERT')
     and has_table_privilege('service_role', 'public.user_passkeys', 'UPDATE'),
     'service_role keeps table-level INSERT and UPDATE');
+select ok(
+    not has_table_privilege('authenticated', 'public.user_passkeys', 'TRUNCATE')
+    and not has_table_privilege('authenticated', 'public.user_passkeys', 'REFERENCES')
+    and not has_table_privilege('authenticated', 'public.user_passkeys', 'TRIGGER')
+    and not has_table_privilege('anon', 'public.user_passkeys', 'TRUNCATE')
+    and not has_table_privilege('anon', 'public.user_passkeys', 'REFERENCES')
+    and not has_table_privilege('anon', 'public.user_passkeys', 'TRIGGER'),
+    'no client role holds TRUNCATE, REFERENCES or TRIGGER on user_passkeys');
 select ok(
     not has_table_privilege('authenticated', 'public.active_user_passkeys', 'INSERT')
     and not has_table_privilege('authenticated', 'public.active_user_passkeys', 'UPDATE')

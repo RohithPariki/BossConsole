@@ -28,6 +28,15 @@
 -- and attestation path: direct table writes create or alter trust material
 -- the verification route then relies on.
 --
+-- The same GRANT ALL also hands client roles TRUNCATE, REFERENCES and
+-- TRIGGER on the table. TRUNCATE is not subject to row-level security at
+-- all: where it is reachable (a SQL-capable client or an RPC; ordinary
+-- PostgREST does not expose it) it erases EVERY user's passkeys, which is
+-- worse than the trust-column hole. REFERENCES lets a client pin the table
+-- with a foreign key from their own table, and TRIGGER lets a client attach
+-- triggers. 20260911010000 revoked exactly this trio from the log tables;
+-- they are revoked here for the same reason.
+--
 -- Fix: no client role may INSERT or UPDATE public.user_passkeys at all.
 -- Unlike 20260927120000 (plugins), where authors legitimately edit ordinary
 -- columns and the fix is column-level, every legitimate writer of this table
@@ -53,9 +62,21 @@
 --
 -- How: mirror 20260927120000. A table-level grant cannot be narrowed by
 -- revoking one column, so where a client role holds table-level INSERT or
--- UPDATE the grant is revoked wholesale and nothing is re-granted. The block
--- fails closed if any column-level INSERT or UPDATE privilege survives
--- through PUBLIC or an inherited role.
+-- UPDATE the grant is revoked wholesale and nothing is re-granted. A
+-- deployment that carries direct column-level grants without the table-level
+-- one has those revoked individually as well. The block fails closed only if
+-- a privilege survives through PUBLIC or an inherited role, which revoking
+-- the client's own ACL entries cannot remove.
+--
+-- Known limit, deliberately not fixed here: 20251023000014 also sets
+-- ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON
+-- TABLES to anon and authenticated. If user_passkeys or the view is ever
+-- DROPPED and recreated (CREATE OR REPLACE VIEW keeps grants; DROP + CREATE
+-- does not), the default privileges restore the full grant and reopen every
+-- hole this migration closes. Narrowing those defaults is the right
+-- fail-closed posture, but it changes what every FUTURE table in this schema
+-- gets at creation, so it is a repository-wide policy change left for a
+-- maintainer decision rather than folded into a user_passkeys migration.
 --
 -- Consequence for later migrations: passkey management clients must keep
 -- going through the `passkey` edge function; a future direct client write
@@ -70,6 +91,7 @@ DECLARE
     client_role text;
     privilege text;
     exposed name;
+    direct_grant record;
 BEGIN
     IF passkeys_oid IS NULL THEN
         RAISE EXCEPTION 'public.user_passkeys is missing; this migration expects the passkey schema';
@@ -78,6 +100,8 @@ BEGIN
     FOREACH client_role IN ARRAY ARRAY['anon', 'authenticated'] LOOP
         CONTINUE WHEN pg_catalog.to_regrole(client_role) IS NULL;
 
+        -- Write privileges on the base table, wholesale: no legitimate
+        -- client writer exists, so nothing is re-granted.
         FOREACH privilege IN ARRAY ARRAY['INSERT', 'UPDATE'] LOOP
             -- has_table_privilege is true only for a table-level grant (or
             -- ownership), never because of column-level grants, so this
@@ -87,9 +111,24 @@ BEGIN
                     'REVOKE %s ON TABLE public.user_passkeys FROM %I', privilege, client_role);
             END IF;
 
-            -- Fail closed if any column of the table stays writable through
-            -- PUBLIC or an inherited role: revoking the client's direct ACL
-            -- entry cannot remove either source.
+            -- A deployment carrying direct column-level grants without the
+            -- table-level one loses those too, rather than failing here.
+            FOR direct_grant IN
+                SELECT column_name
+                FROM information_schema.column_privileges
+                WHERE table_schema = 'public'
+                  AND table_name = 'user_passkeys'
+                  AND grantee = client_role
+                  AND privilege_type = privilege
+            LOOP
+                EXECUTE pg_catalog.format(
+                    'REVOKE %s (%I) ON TABLE public.user_passkeys FROM %I',
+                    privilege, direct_grant.column_name, client_role);
+            END LOOP;
+
+            -- Fail closed only when a privilege survives through PUBLIC or
+            -- an inherited role, which revoking the client's own ACL entries
+            -- cannot remove.
             SELECT a.attname INTO exposed
             FROM pg_catalog.pg_attribute a
             WHERE a.attrelid = passkeys_oid
@@ -104,6 +143,23 @@ BEGIN
                     message = pg_catalog.format(
                         'client %s retains %s on public.user_passkeys.%I',
                         client_role, privilege, exposed),
+                    hint = 'Revoke the privilege from PUBLIC or the inherited role.';
+            END IF;
+        END LOOP;
+
+        -- The non-row privileges from GRANT ALL. TRUNCATE ignores RLS, so a
+        -- reachable client TRUNCATE erases every user's passkeys.
+        FOREACH privilege IN ARRAY ARRAY['TRUNCATE', 'REFERENCES', 'TRIGGER'] LOOP
+            IF pg_catalog.has_table_privilege(client_role, passkeys_oid, privilege) THEN
+                EXECUTE pg_catalog.format(
+                    'REVOKE %s ON TABLE public.user_passkeys FROM %I', privilege, client_role);
+            END IF;
+
+            IF pg_catalog.has_table_privilege(client_role, passkeys_oid, privilege) THEN
+                RAISE EXCEPTION USING
+                    errcode = '42501',
+                    message = pg_catalog.format(
+                        'client %s retains %s on public.user_passkeys', client_role, privilege),
                     hint = 'Revoke the privilege from PUBLIC or the inherited role.';
             END IF;
         END LOOP;
