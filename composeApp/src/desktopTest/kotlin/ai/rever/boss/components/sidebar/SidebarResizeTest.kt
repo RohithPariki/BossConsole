@@ -26,6 +26,15 @@ class SidebarResizeTest {
     }
 
     @Test
+    fun `resizing a revealed collapsed sidebar persists expanded state`() {
+        val collapsed = settings.copy(tabBarCollapsed = true)
+        for (width in listOf(TabBarVerticalWidthRange.start, 300f)) {
+            val result = sidebarResizeResult(collapsed, width)
+            assertEquals(settings.copy(tabBarVerticalWidth = width), result)
+        }
+    }
+
+    @Test
     fun `drag can preview below minimum and reverse before release`() {
         assertEquals(80f, sidebarResizePreview(80f))
         assertEquals(44f, sidebarResizePreview(-50f))

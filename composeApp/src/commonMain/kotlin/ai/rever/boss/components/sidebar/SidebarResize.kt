@@ -15,5 +15,5 @@ internal fun sidebarResizeResult(
     if (requestedWidth < TabBarVerticalWidthRange.start) {
         settings.copy(tabBarCollapsed = true)
     } else {
-        settings.copy(tabBarVerticalWidth = clampBarWidth(requestedWidth))
+        settings.copy(tabBarVerticalWidth = clampBarWidth(requestedWidth), tabBarCollapsed = false)
     }
