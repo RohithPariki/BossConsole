@@ -66,6 +66,10 @@ class DefaultMcpRiskEvaluator : McpRiskEvaluator {
                 McpRiskAssessment(McpRiskLevel.HIGH, "File system write operation via '$toolName'")
             }
 
+            normalizedName == "app_update_install" -> {
+                McpRiskAssessment(McpRiskLevel.HIGH, "Installs an application update and may require restart")
+            }
+
             // Installs code and writes durable MCP policy in one call
             normalizedName in POLICY_WRITING_TOOLS -> {
                 McpRiskAssessment(
