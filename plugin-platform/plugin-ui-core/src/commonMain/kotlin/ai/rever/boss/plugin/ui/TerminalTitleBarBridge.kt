@@ -15,22 +15,40 @@ class TerminalTitleBarAction(
 
 /** Unsupported hosts leave the window unclaimed, retaining the terminal's floating controls. */
 object TerminalTitleBarBridge {
-    private data class Entry(val windowId: String, val active: Boolean, val actions: List<TerminalTitleBarAction>)
+    private data class Entry(
+        val windowId: String,
+        val active: Boolean,
+        val actions: List<TerminalTitleBarAction>,
+    )
+
     private val windows = mutableStateMapOf<String, Boolean>()
     private val entries = mutableStateMapOf<Any, Entry>()
 
-    fun hostWindow(windowId: String, enabled: Boolean) {
+    fun hostWindow(
+        windowId: String,
+        enabled: Boolean,
+    ) {
         if (enabled) windows[windowId] = true else windows.remove(windowId)
     }
 
     fun isHosted(windowId: String): Boolean = windows[windowId] == true
 
-    fun publish(windowId: String, owner: Any, active: Boolean, actions: List<TerminalTitleBarAction>) {
+    fun publish(
+        windowId: String,
+        owner: Any,
+        active: Boolean,
+        actions: List<TerminalTitleBarAction>,
+    ) {
         entries[owner] = Entry(windowId, active, actions)
     }
 
-    fun remove(owner: Any) { entries.remove(owner) }
+    fun remove(owner: Any) {
+        entries.remove(owner)
+    }
 
     fun actions(windowId: String): List<TerminalTitleBarAction> =
-        entries.values.lastOrNull { it.windowId == windowId && it.active }?.actions.orEmpty()
+        entries.values
+            .lastOrNull { it.windowId == windowId && it.active }
+            ?.actions
+            .orEmpty()
 }
