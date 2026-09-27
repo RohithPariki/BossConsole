@@ -51,9 +51,11 @@
 -- on, GRANT ALL in 20251023000014) is a second write path into the same
 -- table: it exposes credential_id and last_used_at, and with the view grant
 -- intact a client could still UPDATE those base columns through it. Its
--- INSERT, UPDATE and DELETE are withdrawn for the same client roles; SELECT
--- stays, because listing one's own active passkeys through this view is the
--- intended client read path.
+-- INSERT, UPDATE and DELETE are withdrawn for the same client roles, along
+-- with REFERENCES and TRIGGER (both valid on views; a client TRIGGER grant
+-- would allow attaching INSTEAD OF triggers). SELECT stays, because listing
+-- one's own active passkeys through this view is the intended client read
+-- path.
 --
 -- SELECT and DELETE on the base table are unchanged. SELECT is how clients
 -- read their own rows; DELETE can only remove the caller's own passkey
@@ -166,8 +168,12 @@ BEGIN
 
         -- The view is auto-updatable; without this, its GRANT ALL would keep
         -- credential_id and last_used_at client-writable into the same table.
+        -- REFERENCES and TRIGGER are valid privileges on views too (TRUNCATE is
+        -- not), and GRANT ALL handed them over, so they are revoked here as
+        -- well: a client TRIGGER grant would allow attaching INSTEAD OF
+        -- triggers to the view.
         IF view_oid IS NOT NULL THEN
-            FOREACH privilege IN ARRAY ARRAY['INSERT', 'UPDATE', 'DELETE'] LOOP
+            FOREACH privilege IN ARRAY ARRAY['INSERT', 'UPDATE', 'DELETE', 'REFERENCES', 'TRIGGER'] LOOP
                 IF pg_catalog.has_table_privilege(client_role, view_oid, privilege) THEN
                     EXECUTE pg_catalog.format(
                         'REVOKE %s ON TABLE public.active_user_passkeys FROM %I',

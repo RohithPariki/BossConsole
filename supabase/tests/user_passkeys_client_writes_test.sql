@@ -10,7 +10,7 @@
 -- TRUNCATE, REFERENCES and TRIGGER (also in GRANT ALL, and not subject to RLS)
 -- are revoked for client roles as well.
 begin;
-select plan(20);
+select plan(21);
 
 insert into auth.users (id, email) values
     ('e1a00000-0000-4000-8000-000000000001', 'passkey-owner@pgtap.test');
@@ -143,6 +143,12 @@ select ok(
     and not has_table_privilege('anon', 'public.active_user_passkeys', 'UPDATE')
     and has_table_privilege('authenticated', 'public.active_user_passkeys', 'SELECT'),
     'the view keeps client SELECT but loses client INSERT, UPDATE and DELETE');
+select ok(
+    not has_table_privilege('authenticated', 'public.active_user_passkeys', 'TRIGGER')
+    and not has_table_privilege('authenticated', 'public.active_user_passkeys', 'REFERENCES')
+    and not has_table_privilege('anon', 'public.active_user_passkeys', 'TRIGGER')
+    and not has_table_privilege('anon', 'public.active_user_passkeys', 'REFERENCES'),
+    'the view also loses client TRIGGER and REFERENCES (both valid on views)');
 
 select * from finish();
 rollback;
