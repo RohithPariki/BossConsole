@@ -1,19 +1,17 @@
 package ai.rever.boss.components.window_panel.components.main_window_panels
 
 import ai.rever.boss.components.sidebar.sidebarResizePreview
+import ai.rever.boss.components.sidebar.sidebarResizeStartWidth
 import ai.rever.boss.platform.CursorUtil.cursorForHorizontalResize
 import ai.rever.boss.window.TabBarVerticalWidthRange
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
@@ -62,19 +60,15 @@ internal fun BoxScope.VerticalTabBarResizeHandle(
                 // pointerInput(Unit), so the gesture is not restarted by the width changing under
                 // it - which it does on every frame of the drag this block reports.
                 .pointerInput(Unit) {
-                    var startWidth = latestWidth
-                    var accumulated = 0f
-                    detectDragGestures(
-                        onDragStart = {
-                            startWidth = latestWidth
-                            accumulated = 0f
-                        },
-                        onDragEnd = { latestCommit(startWidth + accumulated.toDp().value) },
+                    var requestedWidth = 0f
+                    detectHorizontalDragGestures(
+                        onDragStart = { requestedWidth = sidebarResizeStartWidth(latestWidth) },
+                        onDragEnd = { latestCommit(requestedWidth) },
                         onDragCancel = { latestCancel() },
-                    ) { change, dragAmount ->
+                    ) { change, amount ->
                         change.consume()
-                        accumulated += dragAmount.x
-                        latestPreview(sidebarResizePreview(startWidth + accumulated.toDp().value))
+                        requestedWidth += amount.toDp().value
+                        latestPreview(sidebarResizePreview(requestedWidth))
                     }
                 },
     )
