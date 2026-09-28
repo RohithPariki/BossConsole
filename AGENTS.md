@@ -2578,3 +2578,10 @@ aspect-fills a CALayer in fullscreen; unreadable/dynamic-only wallpapers get a t
 fallback. Keep the controller alive across fullscreen transitions so the windowed image survives
 when a fullscreen Space has no desktop-image URL. Do not capture the user's screen, replace AWT's
 contentView, or leave the wallpaper view attached after exiting fullscreen or disabling glass.
+
+Native browser navigation follows `BrowserTabOwnership` for the active tab, with the composed
+browser registry as a fallback for other browser surfaces. Home removes BrowserHandle.Content
+from composition, so ActiveBrowserRegistry alone cannot drive its address field. Bind tab ownership
+when the plugin identifies its handle through setFullscreenHandler, and unbind by handle ID on
+transport failure/disposal so old cleanup cannot remove a replacement. This is host-only state;
+do not add plugin ABI requirements or keep an invisible browser view mounted behind Home.
