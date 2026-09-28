@@ -2841,12 +2841,10 @@ private fun WindowBarRow(
                     onPreview = { width -> draggedWidth = width },
                     onCancel = { draggedWidth = null },
                     onCommit = { width ->
+                        val resized = sidebarResizeResult(WindowAppearanceSettingsManager.currentSettings.value, width)
+                        if (resized.tabBarCollapsed) reveal.dismiss(pointerInSidebar = true)
                         draggedWidth = null
-                        barWidthScope.launch {
-                            WindowAppearanceSettingsManager.updateSettings(
-                                sidebarResizeResult(WindowAppearanceSettingsManager.currentSettings.value, width),
-                            )
-                        }
+                        barWidthScope.launch { WindowAppearanceSettingsManager.updateSettings(resized) }
                     },
                 )
             }
