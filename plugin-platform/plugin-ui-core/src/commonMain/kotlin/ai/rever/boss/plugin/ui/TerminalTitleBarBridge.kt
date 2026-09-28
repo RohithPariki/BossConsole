@@ -45,6 +45,38 @@ object TerminalTitleBarBridge {
         }
     }
 
+    private class CallBar(
+        val windowId: String,
+        val content: @Composable () -> Unit,
+    )
+
+    private val callBars = mutableStateMapOf<Any, CallBar>()
+
+    fun publishCallBar(
+        windowId: String,
+        owner: Any,
+        content: @Composable () -> Unit,
+    ) {
+        val previous = callBars[owner]
+        if (previous?.windowId != windowId || previous.content !== content) {
+            callBars[owner] = CallBar(windowId, content)
+        }
+    }
+
+    fun removeCallBar(owner: Any) {
+        callBars.remove(owner)
+    }
+
+    fun hasCallBar(windowId: String): Boolean = callBars.values.any { it.windowId == windowId }
+
+    @Composable
+    fun CallBarContent(windowId: String) {
+        callBars.values
+            .lastOrNull { it.windowId == windowId }
+            ?.content
+            ?.invoke()
+    }
+
     private val windows = mutableStateMapOf<String, Boolean>()
     private val entries = mutableStateMapOf<Any, Entry>()
 

@@ -27,15 +27,26 @@ class TerminalTitleBarBridgeTest {
             try {
                 TerminalTitleBarBridge.hostWindow("provider-window", true)
                 TerminalTitleBarBridge.registerProvider(provider) { windowId ->
-                    SideEffect { TerminalTitleBarBridge.publish(windowId, actionsOwner, true, listOf(action)) }
-                    DisposableEffect(Unit) { onDispose { TerminalTitleBarBridge.remove(actionsOwner) } }
+                    SideEffect {
+                        TerminalTitleBarBridge.publish(windowId, actionsOwner, true, listOf(action))
+                        TerminalTitleBarBridge.publishCallBar(windowId, actionsOwner) {}
+                    }
+                    DisposableEffect(Unit) {
+                        onDispose {
+                            TerminalTitleBarBridge.remove(actionsOwner)
+                            TerminalTitleBarBridge.removeCallBar(actionsOwner)
+                        }
+                    }
                 }
                 composition.setContent { TerminalTitleBarBridge.Content("provider-window") }
                 assertEquals(listOf(action), TerminalTitleBarBridge.actions("provider-window"))
                 assertTrue(TerminalTitleBarBridge.actions("other-window").isEmpty())
+                assertTrue(TerminalTitleBarBridge.hasCallBar("provider-window"))
+                assertFalse(TerminalTitleBarBridge.hasCallBar("other-window"))
                 TerminalTitleBarBridge.unregisterProvider(provider)
                 composition.setContent { TerminalTitleBarBridge.Content("provider-window") }
                 assertTrue(TerminalTitleBarBridge.actions("provider-window").isEmpty())
+                assertFalse(TerminalTitleBarBridge.hasCallBar("provider-window"))
             } finally {
                 composition.dispose()
                 recomposer.cancel()

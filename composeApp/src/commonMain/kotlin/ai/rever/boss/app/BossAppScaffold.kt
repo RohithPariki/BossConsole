@@ -990,6 +990,8 @@ internal fun BossAppScaffold(
                 ToastOverlay(toastState = toastState)
             }
 
+            TerminalCallOverlay(state.windowId)
+
             // MRU tab-switcher overlay (Ctrl+Tab in most-recently-used mode)
             TabCycleOverlayHost(
                 data = state.tabCycleOverlay,
