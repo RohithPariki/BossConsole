@@ -30,7 +30,11 @@ internal fun rememberNativeWindowGlass(
     val mac = SystemUtils.isMacOS
     val enabled = mac && isGlassTheme(theme.id) && settings.glassCoverage in setOf("sidebar", "window")
     val currentFullscreen by rememberUpdatedState(fullscreen)
-    DisposableEffect(window, enabled, theme.isLight, settings.glassStyle) {
+    val currentEnabled by rememberUpdatedState(enabled)
+    val currentDark by rememberUpdatedState(!theme.isLight)
+    val currentClear by rememberUpdatedState(settings.glassStyle == "clear")
+    // Keep the native material and cached fullscreen wallpaper across theme/style changes.
+    DisposableEffect(window) {
         var controller: MacWindowGlass? = null
 
         fun update() {
@@ -38,11 +42,11 @@ internal fun rememberNativeWindowGlass(
                 if (controller == null) controller = MacWindowGlass(window.windowHandle) { installed = it }
                 controller?.update(
                     GlassRequest(
-                        enabled,
+                        currentEnabled,
                         androidx.compose.ui.unit
                             .IntSize(window.width.coerceAtLeast(1), window.height.coerceAtLeast(1)),
-                        !theme.isLight,
-                        settings.glassStyle == "clear",
+                        currentDark,
+                        currentClear,
                         currentFullscreen,
                     ),
                 )
