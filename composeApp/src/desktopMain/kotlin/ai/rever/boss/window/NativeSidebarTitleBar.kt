@@ -3,6 +3,7 @@ package ai.rever.boss.window
 import ai.rever.boss.plugin.browser.LocalAwtWindow
 import ai.rever.boss.plugin.ui.BossTheme
 import ai.rever.boss.theme.LocalWindowGlass
+import ai.rever.boss.theme.sidebarGlassEnabled
 import ai.rever.boss.utils.SystemUtils
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Spacer
@@ -19,6 +20,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.ComposeWindow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
@@ -57,8 +59,10 @@ internal actual fun NativeSidebarTitleBar(
                     ?: action.icon?.let { action.id to rememberNativeToolbarIcon(it) }
             }.toMap()
     SideEffect { currentController?.update(title, actions, background.luminance() < 0.5f, background.toArgb(), icons) }
-    // This is the actual native content inset, not an additional Compose title bar.
-    headerHeight?.let { Spacer(Modifier.fillMaxWidth().height(it.toFloat().dp).background(background)) }
+    // The sidebar paints its continuous glass surface upward through this inset. Painting
+    // another translucent fill here doubles the tint only over its title-bar portion.
+    val insetBackground = if (sidebarGlassEnabled) Color.Transparent else background
+    headerHeight?.let { Spacer(Modifier.fillMaxWidth().height(it.toFloat().dp).background(insetBackground)) }
     return headerHeight != null
 }
 
