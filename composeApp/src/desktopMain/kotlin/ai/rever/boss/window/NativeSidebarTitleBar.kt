@@ -51,7 +51,9 @@ internal actual fun NativeSidebarTitleBar(
     NativeBrowserFieldHosting(currentController, actions, headerHeight != null)
     NativeAddressSuggestions(currentController, actions)
     DisposableEffect(currentController) { onDispose { currentController?.close() } }
-    val background = BossTheme.colors.raised.copy(alpha = LocalWindowGlass.current.chromeOpacity)
+    val background =
+        (if (sidebarGlassEnabled) BossTheme.colors.panel else BossTheme.colors.raised)
+            .copy(alpha = LocalWindowGlass.current.chromeOpacity)
     val icons =
         actions
             .mapNotNull { action ->

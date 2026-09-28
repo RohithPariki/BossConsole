@@ -1406,7 +1406,9 @@ fun BossTabsComponent.BossMainPanelContent(modifier: Modifier) {
     val selectedProject by windowProjectState?.selectedProject?.collectAsState()
         ?: remember { mutableStateOf(Project("No Project", "", 0L)) }
 
-    Box(modifier = modifier) {
+    // Own the content tint once, outside plugin surfaces, just as BossTerm's root does.
+    val glass = ai.rever.boss.theme.LocalWindowGlass.current
+    Box(modifier = modifier.background(if (glass.installed) BossTheme.colors.ink else Color.Transparent)) {
         val activeTab = tabsState.value.activeTab
         val activeComponent = getActiveComponent()
 

@@ -12,15 +12,23 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 
+internal const val DEFAULT_GLASS_TINT = 0.5f
+internal const val DEFAULT_GLASS_OPACITY = 0.5f
+
 /** Per-window capability: saved opacity is never applied before a real native backdrop exists. */
 internal data class WindowGlass(
     val installed: Boolean = false,
     val coverage: String = "off",
-    val tint: Float = 0.24f,
+    val tint: Float = DEFAULT_GLASS_TINT,
+    val opacity: Float = DEFAULT_GLASS_OPACITY,
 ) {
     val chromeOpacity: Float get() = if (installed && coverage in setOf("sidebar", "window")) safeTint else 1f
-    val contentOpacity: Float get() = if (installed && coverage == "window") safeTint else 1f
-    private val safeTint: Float get() = if (tint.isFinite()) tint.coerceIn(0f, 1f) else 0.24f
+
+    // BossTerm paints the background opacity and tint as one combined fill.
+    val contentOpacity: Float
+        get() = if (installed && coverage == "window") 1f - (1f - safeOpacity) * (1f - safeTint) else 1f
+    private val safeOpacity: Float get() = if (opacity.isFinite()) opacity.coerceIn(0f, 1f) else DEFAULT_GLASS_OPACITY
+    private val safeTint: Float get() = if (tint.isFinite()) tint.coerceIn(0f, 1f) else DEFAULT_GLASS_TINT
 }
 
 internal val LocalWindowGlass = staticCompositionLocalOf { WindowGlass() }

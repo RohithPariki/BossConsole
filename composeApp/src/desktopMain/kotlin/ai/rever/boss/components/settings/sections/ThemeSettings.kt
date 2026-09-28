@@ -186,7 +186,7 @@ private fun GlassThemeSettings() {
             description = "Regular and Clear use the native macOS 26 material.",
         )
         SettingsSlider(
-            label = "Theme tint",
+            label = "Glass tint",
             value = tint,
             onValueChange = { tint = it },
             onValueChangeFinished = {
@@ -196,5 +196,29 @@ private fun GlassThemeSettings() {
             valueDisplay = { "${(it * 100).toInt()}%" },
             description = "Color over the glass. Lower values show more of the native backdrop.",
         )
+        GlassBackgroundOpacity()
     }
+}
+
+@Composable
+private fun GlassBackgroundOpacity() {
+    val settings by AppThemeSettingsManager.settings.collectAsState()
+    var opacity by remember(settings.glassOpacity) { mutableStateOf(settings.glassOpacity) }
+    if (settings.glassCoverage != "window") return
+    SettingsSlider(
+        label = "Background opacity",
+        value = opacity,
+        onValueChange = { opacity = it },
+        onValueChangeFinished = {
+            AppThemeSettingsManager.updateGlass(
+                settings.glassCoverage,
+                settings.glassStyle,
+                settings.glassTint,
+                opacity,
+            )
+        },
+        valueRange = 0f..1f,
+        valueDisplay = { "${(it * 100).toInt()}%" },
+        description = "Opacity of app content; Glass tint adds theme color above it, as in BossTerm.",
+    )
 }

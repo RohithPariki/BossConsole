@@ -67,12 +67,14 @@ object AppThemeSettingsManager {
         coverage: String,
         style: String,
         tint: Float,
+        opacity: Float = _settings.value.glassOpacity,
     ) {
         _settings.value =
             _settings.value.copy(
                 glassCoverage = coverage.takeIf { it in setOf("off", "sidebar", "window") } ?: "window",
                 glassStyle = if (style == "clear") "clear" else "regular",
-                glassTint = if (tint.isFinite()) tint.coerceIn(0f, 1f) else 0.24f,
+                glassTint = if (tint.isFinite()) tint.coerceIn(0f, 1f) else DEFAULT_GLASS_TINT,
+                glassOpacity = if (opacity.isFinite()) opacity.coerceIn(0f, 1f) else DEFAULT_GLASS_OPACITY,
             )
         scope.launch { save() }
     }

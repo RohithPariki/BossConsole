@@ -5,6 +5,7 @@ import ai.rever.boss.components.window_panel.components.main_window_panels.TabBa
 import ai.rever.boss.components.window_panel.components.main_window_panels.overlayRegionInWindow
 import ai.rever.boss.components.window_panel.components.main_window_panels.rememberToggleCollapseAction
 import ai.rever.boss.plugin.ui.BossTheme
+import ai.rever.boss.theme.LocalWindowGlass
 import ai.rever.boss.theme.sidebarGlassEnabled
 import ai.rever.boss.utils.SystemUtils
 import androidx.compose.foundation.background
@@ -40,6 +41,7 @@ internal fun integratedSidebarSurface(
 ): Modifier {
     val colors = BossTheme.colors
     val glass = sidebarGlassEnabled
+    val panel = if (glass) colors.ink.copy(alpha = LocalWindowGlass.current.chromeOpacity) else colors.panel
     if (!enabled) return Modifier.background(if (glass) Color.Transparent else colors.raised)
     var top by remember { mutableFloatStateOf(0f) }
     val nativeFrame = SystemUtils.isMacOS && extendsIntoTitleBar
@@ -53,7 +55,7 @@ internal fun integratedSidebarSurface(
             val origin = Offset(0f, -extension)
             val bounds = Size(size.width, size.height + extension)
             val radius = CornerRadius(22.dp.toPx())
-            drawRoundRect(colors.panel, origin, bounds, radius)
+            drawRoundRect(panel, origin, bounds, radius)
             drawRoundRect(
                 colors.textPrimary.copy(alpha = 0.18f),
                 origin,

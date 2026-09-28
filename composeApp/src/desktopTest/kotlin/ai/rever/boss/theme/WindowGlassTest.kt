@@ -8,6 +8,24 @@ import kotlin.test.assertTrue
 
 class WindowGlassTest {
     @Test
+    fun `BossTerm defaults combine tint and opacity without stacking sidebar fill`() {
+        val settings = AppThemeSettings()
+        val glass =
+            WindowGlass(
+                installed = true,
+                coverage = settings.glassCoverage,
+                tint = settings.glassTint,
+                opacity = settings.glassOpacity,
+            )
+        assertEquals(0.5f, glass.chromeOpacity)
+        assertEquals(0.75f, glass.contentOpacity)
+        assertEquals(0f, glass.copy(tint = 0f, opacity = 0f).contentOpacity)
+        assertEquals(1f, glass.copy(opacity = 1f).contentOpacity)
+        assertEquals(1f, glass.copy(tint = 1f).contentOpacity)
+        assertEquals(0.75f, glass.copy(tint = Float.NaN, opacity = Float.NaN).contentOpacity)
+    }
+
+    @Test
     fun `failed native installation stays opaque even with zero saved tint`() {
         val glass = WindowGlass(installed = false, coverage = "window", tint = 0f)
         assertEquals(1f, glass.chromeOpacity)
@@ -19,9 +37,9 @@ class WindowGlassTest {
         val sidebar = WindowGlass(installed = true, coverage = "sidebar", tint = 0.3f)
         assertEquals(0.3f, sidebar.chromeOpacity)
         assertEquals(1f, sidebar.contentOpacity)
-        assertEquals(0.3f, sidebar.copy(coverage = "window").contentOpacity)
+        assertEquals(0.65f, sidebar.copy(coverage = "window").contentOpacity)
         assertEquals(1f, sidebar.copy(coverage = "off").chromeOpacity)
-        assertEquals(0.24f, sidebar.copy(tint = Float.NaN).chromeOpacity)
+        assertEquals(0.5f, sidebar.copy(tint = Float.NaN).chromeOpacity)
     }
 
     @Test
@@ -48,6 +66,7 @@ class WindowGlassTest {
                 glassCoverage = "sidebar",
                 glassStyle = "clear",
                 glassTint = 0.42f,
+                glassOpacity = 0.6f,
             )
         val json = AppThemeSettings.storageJson.encodeToString(AppThemeSettings.serializer(), glass)
         assertEquals(glass, AppThemeSettings.decodeOrDefaults(json, false))

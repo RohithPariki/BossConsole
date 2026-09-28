@@ -67,5 +67,5 @@ internal fun rememberNativeWindowGlass(
             installed = false
         }
     }
-    return WindowGlass(installed && enabled, settings.glassCoverage, settings.glassTint)
+    return WindowGlass(installed && enabled, settings.glassCoverage, settings.glassTint, settings.glassOpacity)
 }
