@@ -7,6 +7,7 @@ import ai.rever.boss.theme.isGlassTheme
 import ai.rever.boss.utils.SystemUtils
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,6 +34,7 @@ internal fun rememberNativeWindowGlass(
     val currentEnabled by rememberUpdatedState(enabled)
     val currentDark by rememberUpdatedState(!theme.isLight)
     val currentClear by rememberUpdatedState(settings.glassStyle == "clear")
+    var refresh by remember(window) { mutableStateOf<(() -> Unit)?>(null) }
     // Keep the native material and cached fullscreen wallpaper across theme/style changes.
     DisposableEffect(window) {
         var controller: MacWindowGlass? = null
@@ -62,14 +64,19 @@ internal fun rememberNativeWindowGlass(
         if (mac) {
             window.addComponentListener(listener)
             timer.start()
+            refresh = ::update
             update()
         }
         onDispose {
+            refresh = null
             timer.stop()
             window.removeComponentListener(listener)
             controller?.close()
             installed = false
         }
     }
+    // Updated state is committed before this runs; the timer is only a fallback for
+    // native accessibility/frame changes, not the delivery path for Compose settings.
+    LaunchedEffect(refresh, enabled, theme.isLight, settings.glassStyle, fullscreen) { refresh?.invoke() }
     return WindowGlass(installed && enabled, settings.glassCoverage, settings.glassTint, settings.glassOpacity)
 }
