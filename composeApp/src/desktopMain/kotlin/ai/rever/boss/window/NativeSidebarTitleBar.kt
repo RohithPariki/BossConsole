@@ -2,6 +2,7 @@ package ai.rever.boss.window
 
 import ai.rever.boss.plugin.browser.LocalAwtWindow
 import ai.rever.boss.plugin.ui.BossTheme
+import ai.rever.boss.theme.LocalWindowGlass
 import ai.rever.boss.utils.SystemUtils
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Spacer
@@ -48,7 +49,7 @@ internal actual fun NativeSidebarTitleBar(
     NativeBrowserFieldHosting(currentController, actions, headerHeight != null)
     NativeAddressSuggestions(currentController, actions)
     DisposableEffect(currentController) { onDispose { currentController?.close() } }
-    val background = BossTheme.colors.raised
+    val background = BossTheme.colors.raised.copy(alpha = LocalWindowGlass.current.chromeOpacity)
     val icons =
         actions
             .mapNotNull { action ->

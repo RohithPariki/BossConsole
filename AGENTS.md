@@ -2543,3 +2543,25 @@ invalidates pending publication and clears scan status; it does not cancel detec
 Cancellation propagates without becoming a scan error. The internal scanner overload lets
 `RunConfigurationScanOwnershipTest` control completion order on the real manager without
 mutating a global detector or reading a user's project.
+
+
+## Native glass themes
+
+Liquid Glass Light/Dark are additional Blueprint palettes; existing platform defaults and
+Space-theme resolution stay unchanged. Glass coverage/style/tint live in app-theme-settings.json,
+independently of palette selection. Only the main macOS window installs a native backdrop;
+Windows/Linux retain opaque palettes. Browser surfaces and plugin-owned opaque backgrounds stay
+opaque. Do not change shared theme colors globally to alpha: dialog windows have no backdrop.
+
+`MacWindowGlass` follows BossTerm's NSGlassEffectView (macOS 26) / NSVisualEffectView approach.
+Use the existing AppKit main-queue dispatcher and exact Skiko NSWindow handle. Never replace
+AWT's contentView, use Auto Layout on it, or use a struct-return objc_msgSend mapping. Java stays
+undecorated/transparent on macOS so Skia retains alpha; AppKit restores the native frame and lights.
+The controller owns/releases only its backdrop, reattaches after frame changes, and respects Reduce
+Transparency. Close it with the window. `LocalWindowGlass` becomes installed only after success;
+failed/unsupported installation paints opaque without overwriting saved preferences. Native toolbar
+background and Compose chrome use the same tint. Menus and dialogs retain opaque theme tokens.
+
+`BOSS_TEST_NATIVE_GLASS=1 ./gradlew :composeApp:desktopTest --tests '*MacWindowGlassSmokeTest'`
+is an opt-in macOS smoke test using its own small unfocusable window. It verifies native install,
+light/clear updates, and detach; it does not establish visual correctness of an entire app layout.

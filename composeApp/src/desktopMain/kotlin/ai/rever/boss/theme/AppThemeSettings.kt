@@ -23,6 +23,9 @@ import kotlinx.serialization.json.Json
 @Serializable
 data class AppThemeSettings(
     val appThemeId: String = BossThemes.DEFAULT_ID,
+    val glassCoverage: String = "window",
+    val glassStyle: String = "regular",
+    val glassTint: Float = 0.24f,
 ) {
     companion object {
         /**
