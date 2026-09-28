@@ -67,7 +67,7 @@ internal class MacSidebarToolbar(
         }
         actions.forEach { (id, action) -> items[id]?.let { updateItem(it, action) } }
         MacToolbarGroups.members.keys.forEach { id ->
-            items[id]?.let { MacToolbarGroups.update(id, it, actions.keys, groupedItems, ::makeItem) }
+            items[id]?.let { MacToolbarGroups.update(id, it, actions, groupedItems, ::makeItem) }
         }
         measure()
     }
@@ -136,7 +136,7 @@ internal class MacSidebarToolbar(
         if (action == null) {
             return if (id in MacToolbarGroups.members) {
                 items.getOrPut(checkNotNull(id)) { MacToolbarGroups.create(id) }.also {
-                    MacToolbarGroups.update(id, it, actions.keys, groupedItems, ::makeItem)
+                    MacToolbarGroups.update(id, it, actions, groupedItems, ::makeItem)
                 }
             } else if (id == "sidebar_boundary" || id == "sidebar_leading") {
                 items.getOrPut(id) { MacSidebarBoundary.create(identifier) }.also {
@@ -205,7 +205,18 @@ internal class MacSidebarToolbar(
                 pointer(sender, "itemIdentifier")
             }
         val id = pointer(identifier, "UTF8String")?.getString(0) ?: return
-        SwingUtilities.invokeLater { if (!closed) onAction(id) }
+        SwingUtilities.invokeLater {
+            if (!closed) {
+                // Opening a status menu is not a service toggle. Restore AppKit's click selection
+                // from the live service state, even when the action does not recompose the host.
+                dispatchSafely {
+                    MacToolbarGroups.members.keys.forEach { groupId ->
+                        items[groupId]?.let { MacToolbarGroups.update(groupId, it, actions, groupedItems, ::makeItem) }
+                    }
+                }
+                onAction(id)
+            }
+        }
     }
 
     fun measure() {

@@ -24,7 +24,8 @@ internal object MacToolbarGroups {
             )
         send(group, "setBordered:", 1.toByte())
         send(group, "setControlRepresentation:", 1L) // Expanded: keep every action visible.
-        send(group, "setSelectionMode:", 2L) // Momentary: these are actions, not selectable tabs.
+        // Status segments can be independently active; utility buttons remain momentary.
+        send(group, "setSelectionMode:", if (id == "terminal_controls") 1L else 2L)
         val label = if (id == "terminal_controls") "Sharing, Call and MCP" else "Search and Tools"
         send(group, "setLabel:", string(label))
         return group
@@ -33,15 +34,20 @@ internal object MacToolbarGroups {
     fun update(
         id: String,
         group: Pointer,
-        available: Set<String>,
+        actions: Map<String, NativeTitleBarAction>,
         previous: MutableMap<String, List<String>>,
         makeItem: (Pointer?) -> Pointer?,
     ) {
-        val present = members.getValue(id).filter { it in available }
-        if (previous[id] == present) return
-        val array = pointer(clazz("NSMutableArray"), "array")
-        present.mapNotNull { makeItem(string(it)) }.forEach { send(array, "addObject:", it) }
-        send(group, "setSubitems:", array)
-        previous[id] = present
+        val present = members.getValue(id).filter { it in actions }
+        if (previous[id] != present) {
+            val array = pointer(clazz("NSMutableArray"), "array")
+            present.mapNotNull { makeItem(string(it)) }.forEach { send(array, "addObject:", it) }
+            send(group, "setSubitems:", array)
+            previous[id] = present
+        }
+        present.forEachIndexed { index, actionId ->
+            val selected = if (actions[actionId]?.active == true) 1.toByte() else 0.toByte()
+            send(group, "setSelected:atIndex:", selected, index.toLong())
+        }
     }
 }
