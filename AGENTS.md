@@ -2591,3 +2591,9 @@ Content combines these once as `1 - (1 - opacity) * (1 - tint)`; the integrated 
 paints only the tint over the palette ink, with no content fill beneath it. The main tab
 content owns its fill, so transparent terminal plugins must not paint a second one.
 Saved custom tint values remain intact. Opaque plugins and browser pages keep their own fills.
+
+The native title-bar inset and pane strip use the same ink/combined-opacity fill as main tab
+content. Exclude the expanded sidebar column from the inset while it extends through the header;
+when top chrome holds the sidebar below it, fill the full header. Native NSWindow background stays
+clear in glass mode so it does not add another tint, including fullscreen. The Space selector
+shows the focused terminal tab's live host title on terminal tabs while retaining its Space menu.

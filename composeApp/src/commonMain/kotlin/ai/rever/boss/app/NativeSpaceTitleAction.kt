@@ -5,6 +5,7 @@ import ai.rever.boss.components.window_panel.SplitViewState
 import ai.rever.boss.components.workspaces.LayoutWorkspace
 import ai.rever.boss.components.workspaces.isUserOwnedSpace
 import ai.rever.boss.components.workspaces.workspaceManager
+import ai.rever.boss.plugin.tab.terminal.TerminalTabType
 import ai.rever.boss.window.NativeTitleBarAction
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -12,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.arkivanov.decompose.extensions.compose.subscribeAsState
 
 /** The standard macOS window title follows this window's Space and project. */
 @Composable
@@ -23,6 +25,14 @@ internal fun nativeSpaceTitleAction(
     val spaces by workspaceManager.visibleWorkspaces.collectAsState()
     val currentId = splitViewState.currentWorkspaceId
     val current = spaces.find { it.id == currentId }
+    val tabs =
+        splitViewState
+            .getActiveTabsComponent()
+            ?.tabsState
+            ?.subscribeAsState()
+            ?.value
+    val activeTab = tabs?.tabs?.getOrNull(tabs.activeIndex)
+    val terminalTitle = activeTab?.takeIf { it.typeId == TerminalTabType.typeId }?.title?.takeIf { it.isNotBlank() }
     var renameTarget by remember { mutableStateOf<LayoutWorkspace?>(null) }
     renameTarget?.let { target ->
         RenameDialog(
@@ -35,7 +45,7 @@ internal fun nativeSpaceTitleAction(
     }
     return NativeTitleBarAction(
         id = "space",
-        label = current?.name ?: "Default",
+        label = terminalTitle ?: current?.name ?: "Default",
         subtitle = projectName.ifBlank { "No project" },
         contextMenu =
             if (current != null && isUserOwnedSpace(current.id)) {
