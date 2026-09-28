@@ -52,7 +52,9 @@ internal object MacToolbarTitle {
         send(label, "setUsesSingleLineMode:", 1.toByte())
         send(item, "setView:", label)
         send(item, "setBordered:", 0.toByte())
-        send(item, "setNavigational:", 1.toByte())
+        // Match the Space popup's ordinary-item role. AppKit moves navigational items
+        // ahead of ordinary items regardless of their insertion order.
+        send(item, "setNavigational:", 0.toByte())
         return label
     }
 }
