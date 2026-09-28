@@ -5,6 +5,7 @@ import ai.rever.boss.components.window_panel.components.main_window_panels.TabBa
 import ai.rever.boss.components.window_panel.components.main_window_panels.overlayRegionInWindow
 import ai.rever.boss.components.window_panel.components.main_window_panels.rememberToggleCollapseAction
 import ai.rever.boss.plugin.ui.BossTheme
+import ai.rever.boss.theme.LocalGlassSidebarGeometry
 import ai.rever.boss.theme.LocalWindowGlass
 import ai.rever.boss.theme.sidebarGlassEnabled
 import ai.rever.boss.utils.SystemUtils
@@ -13,6 +14,7 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -22,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -29,6 +32,7 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.dp
@@ -43,19 +47,37 @@ internal fun integratedSidebarSurface(
     val glass = sidebarGlassEnabled
     val panel =
         when {
-            glass && LocalWindowGlass.current.coverage == "window" -> Color.Transparent
             glass -> colors.ink.copy(alpha = LocalWindowGlass.current.chromeOpacity)
             else -> colors.panel
         }
     if (!enabled) return Modifier.background(if (glass) Color.Transparent else colors.raised)
+    val geometry = LocalGlassSidebarGeometry.current
+    val density = LocalDensity.current
+    DisposableEffect(geometry) { onDispose { geometry.shape = null } }
     var top by remember { mutableFloatStateOf(0f) }
     val nativeFrame = SystemUtils.isMacOS && extendsIntoTitleBar
     return Modifier
         // Paint beneath the outer gap and clipped corners, before applying the panel inset.
         .background(if (glass) Color.Transparent else colors.raised)
         .padding(start = 4.dp, end = 4.dp, bottom = 4.dp, top = if (nativeFrame) 0.dp else 4.dp)
-        .onGloballyPositioned { top = it.positionInRoot().y }
-        .drawBehind {
+        .onGloballyPositioned {
+            val position = it.positionInRoot()
+            top = position.y
+            val headerTop = with(density) { 4.dp.toPx() }
+            val radius = with(density) { 22.dp.toPx() }
+            geometry.shape =
+                if (glass) {
+                    RoundRect(
+                        position.x,
+                        if (nativeFrame) headerTop else position.y,
+                        position.x + it.size.width,
+                        position.y + it.size.height,
+                        CornerRadius(radius),
+                    )
+                } else {
+                    null
+                }
+        }.drawBehind {
             val extension = if (nativeFrame) (top - 4.dp.toPx()).coerceAtLeast(0f) else 0f
             val origin = Offset(0f, -extension)
             val bounds = Size(size.width, size.height + extension)

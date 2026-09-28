@@ -2587,14 +2587,14 @@ transport failure/disposal so old cleanup cannot remove a replacement. This is h
 do not add plugin ABI requirements or keep an invisible browser view mounted behind Home.
 
 Host glass follows BossTerm's separate 50% tint / 50% background-opacity defaults.
-Full-window glass has one root-owned ink fill in GlassAppSurfaces, combining them as
-`1 - (1 - opacity) * (1 - tint)`. Scoped ink/panel tokens retain RGB but have zero alpha,
-including sidebar and header surfaces. Keep MaterialTheme's background alpha as the plugin
-capability signal, but never repaint it in child chrome. This prevents stacked tint and
-untinted gaps; sidebar-only coverage retains separate opaque content. Saved custom values,
-opaque plugins, and browser pages keep their own behavior.
+GlassAppSurfaces paints the combined main ink fill `1 - (1 - opacity) * (1 - tint)`
+through the title bar and content, excluding the rounded sidebar geometry. The sidebar paints
+its own tint once, including its header extension. This follows BossTerm's root drawBehind /
+sidebar cutout: never flatten the sidebar into the main fill or stack both fills beneath it.
+Scoped ink/panel tokens retain RGB but have zero alpha; MaterialTheme's background alpha
+remains the plugin capability signal. Opaque plugins and browser pages retain their own fills.
 
 Native NSWindow background stays clear in glass mode, including fullscreen. The Space selector
 shows the focused terminal tab's live host title on terminal tabs while retaining its Space menu.
-GlassSurfaceRenderingTest compares gap, single-surface and overlapping-surface pixels in both
-palettes; keep this test when changing surface ownership.
+GlassSurfaceRenderingTest renders the actual integrated sidebar and verifies that both surfaces
+continue through their headers without tint overlap, in both palettes.

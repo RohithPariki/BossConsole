@@ -1,5 +1,6 @@
 package ai.rever.boss.theme
 
+import ai.rever.boss.components.sidebar.integratedSidebarSurface
 import ai.rever.boss.plugin.ui.BossBlueprintColorScheme
 import ai.rever.boss.plugin.ui.BossBlueprintLightColorScheme
 import ai.rever.boss.plugin.ui.BossTheme
@@ -25,6 +26,40 @@ import kotlin.test.assertNotEquals
 
 class GlassSurfaceRenderingTest {
     @get:Rule val rule = createComposeRule()
+
+    @Test
+    fun `real sidebar cuts out main tint and stays continuous through its header`() {
+        org.junit.Assume.assumeTrue(ai.rever.boss.utils.SystemUtils.isMacOS)
+        val light = mutableStateOf(false)
+        rule.setContent {
+            CompositionLocalProvider(
+                LocalBossColors provides if (light.value) BossBlueprintLightColorScheme else BossBlueprintColorScheme,
+                LocalWindowGlass provides WindowGlass(installed = true, coverage = "window"),
+            ) {
+                Box(Modifier.size(120.dp).background(Color.Red).testTag("glass")) {
+                    GlassAppSurfaces {
+                        Box(
+                            Modifier
+                                .offset(y = 40.dp)
+                                .size(60.dp, 80.dp)
+                                .then(integratedSidebarSurface(enabled = true, extendsIntoTitleBar = true)),
+                        )
+                    }
+                }
+            }
+        }
+        for (isLight in listOf(false, true)) {
+            rule.runOnIdle { light.value = isLight }
+            val pixels = rule.onNodeWithTag("glass").captureToImage().toPixelMap()
+            val sidebarX = pixels.width / 4
+            val mainX = pixels.width * 3 / 4
+            val headerY = pixels.height / 5
+            val bodyY = pixels.height / 2
+            assertEquals(pixels[sidebarX, headerY], pixels[sidebarX, bodyY])
+            assertEquals(pixels[mainX, headerY], pixels[mainX, bodyY])
+            assertNotEquals(pixels[sidebarX, bodyY], pixels[mainX, bodyY])
+        }
+    }
 
     @Test
     fun `sidebar content and unpainted header share one fill in both palettes`() {
