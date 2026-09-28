@@ -80,7 +80,7 @@ private fun GlassTitleBarInset(
     sidebar: NativeTitleBarAction?,
 ) {
     val glass = LocalWindowGlass.current
-    val contentFill = BossTheme.colors.ink.copy(alpha = glass.contentOpacity)
+    val contentFill = if (glass.coverage == "window") Color.Transparent else BossTheme.colors.ink
     val separateSidebar = sidebar?.takeIf { !it.active && it.sidebarWidth > 0f }
     Spacer(
         Modifier.fillMaxWidth().height(height.toFloat().dp).drawBehind {

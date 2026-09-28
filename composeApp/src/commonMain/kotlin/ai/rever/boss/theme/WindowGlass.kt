@@ -49,12 +49,27 @@ internal fun GlassAppSurfaces(content: @Composable () -> Unit) {
     val colors = BossTheme.colors
     val surfaces =
         colors.copy(
-            ink = colors.ink.copy(alpha = glass.contentOpacity),
-            panel = (if (glass.installed) colors.ink else colors.panel).copy(alpha = glass.chromeOpacity),
+            ink = if (glass.installed && glass.coverage == "window") colors.ink.copy(alpha = 0f) else colors.ink,
+            panel =
+                if (glass.installed &&
+                    glass.coverage == "window"
+                ) {
+                    Color.Transparent
+                } else {
+                    colors.panel.copy(alpha = glass.chromeOpacity)
+                },
         )
-    MaterialTheme(colors = MaterialTheme.colors.copy(background = surfaces.ink)) {
+    MaterialTheme(colors = MaterialTheme.colors.copy(background = colors.ink.copy(alpha = glass.contentOpacity))) {
         CompositionLocalProvider(LocalBossColors provides surfaces) {
-            Box(Modifier.fillMaxSize().background(if (glass.installed) Color.Transparent else colors.ink)) { content() }
+            val background =
+                if (glass.installed && glass.coverage == "window") {
+                    colors.ink.copy(alpha = glass.contentOpacity)
+                } else if (glass.installed) {
+                    Color.Transparent
+                } else {
+                    colors.ink
+                }
+            Box(Modifier.fillMaxSize().background(background)) { content() }
         }
     }
 }

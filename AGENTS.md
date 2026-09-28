@@ -2567,8 +2567,8 @@ is an opt-in macOS smoke test using its own small unfocusable window. It verifie
 light/clear updates, and detach; it does not establish visual correctness of an entire app layout.
 
 The vertical sidebar uses `SidebarGlass` washes only while the native backdrop is active.
-`IntegratedSidebarSurface` owns its panel tint; `WindowVerticalTabBar.surfacePainted` prevents
-painting the same translucent fill twice. Keep the outer gap transparent in glass mode. Favorites,
+`IntegratedSidebarSurface` keeps the rounded outline; full-window glass tint belongs to the root.
+`WindowVerticalTabBar.surfacePainted` prevents duplicate fills for sidebar-only coverage. Favorites,
 selection fills and inset hairline separators follow BossTerm's sidebar treatment; do not change
 shared palette tokens, menu surfaces, or the non-glass layout to achieve this.
 
@@ -2587,13 +2587,14 @@ transport failure/disposal so old cleanup cannot remove a replacement. This is h
 do not add plugin ABI requirements or keep an invisible browser view mounted behind Home.
 
 Host glass follows BossTerm's separate 50% tint / 50% background-opacity defaults.
-Content combines these once as `1 - (1 - opacity) * (1 - tint)`; the integrated sidebar
-paints that same ink and opacity once, with no content fill beneath it. The main tab
-content owns its fill, so transparent terminal plugins must not paint a second one.
-Saved custom tint values remain intact. Opaque plugins and browser pages keep their own fills.
+Full-window glass has one root-owned ink fill in GlassAppSurfaces, combining them as
+`1 - (1 - opacity) * (1 - tint)`. Scoped ink/panel tokens retain RGB but have zero alpha,
+including sidebar and header surfaces. Keep MaterialTheme's background alpha as the plugin
+capability signal, but never repaint it in child chrome. This prevents stacked tint and
+untinted gaps; sidebar-only coverage retains separate opaque content. Saved custom values,
+opaque plugins, and browser pages keep their own behavior.
 
-The native title-bar inset and pane strip use the same ink/combined-opacity fill as main tab
-content. Exclude the expanded sidebar column from the inset while it extends through the header;
-when top chrome holds the sidebar below it, fill the full header. Native NSWindow background stays
-clear in glass mode so it does not add another tint, including fullscreen. The Space selector
+Native NSWindow background stays clear in glass mode, including fullscreen. The Space selector
 shows the focused terminal tab's live host title on terminal tabs while retaining its Space menu.
+GlassSurfaceRenderingTest compares gap, single-surface and overlapping-surface pixels in both
+palettes; keep this test when changing surface ownership.

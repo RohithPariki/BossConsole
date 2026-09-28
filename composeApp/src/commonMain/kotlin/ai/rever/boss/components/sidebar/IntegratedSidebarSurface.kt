@@ -41,7 +41,12 @@ internal fun integratedSidebarSurface(
 ): Modifier {
     val colors = BossTheme.colors
     val glass = sidebarGlassEnabled
-    val panel = if (glass) colors.ink.copy(alpha = LocalWindowGlass.current.chromeOpacity) else colors.panel
+    val panel =
+        when {
+            glass && LocalWindowGlass.current.coverage == "window" -> Color.Transparent
+            glass -> colors.ink.copy(alpha = LocalWindowGlass.current.chromeOpacity)
+            else -> colors.panel
+        }
     if (!enabled) return Modifier.background(if (glass) Color.Transparent else colors.raised)
     var top by remember { mutableFloatStateOf(0f) }
     val nativeFrame = SystemUtils.isMacOS && extendsIntoTitleBar
