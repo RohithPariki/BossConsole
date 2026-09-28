@@ -25,14 +25,6 @@ internal fun nativeSpaceTitleAction(
     val spaces by workspaceManager.visibleWorkspaces.collectAsState()
     val currentId = splitViewState.currentWorkspaceId
     val current = spaces.find { it.id == currentId }
-    val tabs =
-        splitViewState
-            .getActiveTabsComponent()
-            ?.tabsState
-            ?.subscribeAsState()
-            ?.value
-    val activeTab = tabs?.tabs?.getOrNull(tabs.activeIndex)
-    val terminalTitle = activeTab?.takeIf { it.typeId == TerminalTabType.typeId }?.title?.takeIf { it.isNotBlank() }
     var renameTarget by remember { mutableStateOf<LayoutWorkspace?>(null) }
     renameTarget?.let { target ->
         RenameDialog(
@@ -45,7 +37,7 @@ internal fun nativeSpaceTitleAction(
     }
     return NativeTitleBarAction(
         id = "space",
-        label = terminalTitle ?: current?.name ?: "Default",
+        label = current?.name ?: "Default",
         subtitle = projectName.ifBlank { "No project" },
         contextMenu =
             if (current != null && isUserOwnedSpace(current.id)) {
@@ -58,4 +50,18 @@ internal fun nativeSpaceTitleAction(
                 NativeTitleBarAction("space:${space.id}", space.name, active = space.id == currentId) { onOpen(space) }
             },
     ) {}
+}
+
+/** Separate live terminal label; the Space picker always retains its own identity. */
+@Composable
+internal fun nativeTerminalTitleLabel(splitViewState: SplitViewState): List<NativeTitleBarAction> {
+    val tabs =
+        splitViewState
+            .getActiveTabsComponent()
+            ?.tabsState
+            ?.subscribeAsState()
+            ?.value
+    val activeTab = tabs?.tabs?.getOrNull(tabs.activeIndex)
+    val terminalTitle = activeTab?.takeIf { it.typeId == TerminalTabType.typeId }?.title?.takeIf { it.isNotBlank() }
+    return terminalTitle?.let { listOf(NativeTitleBarAction("terminal_title", it) {}) }.orEmpty()
 }

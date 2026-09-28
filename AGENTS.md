@@ -2594,7 +2594,7 @@ sidebar cutout: never flatten the sidebar into the main fill or stack both fills
 Scoped ink/panel tokens retain RGB but have zero alpha; MaterialTheme's background alpha
 remains the plugin capability signal. Opaque plugins and browser pages retain their own fills.
 
-Native NSWindow background stays clear in glass mode, including fullscreen. The Space selector
-shows the focused terminal tab's live host title on terminal tabs while retaining its Space menu.
+Native NSWindow background stays clear in glass mode, including fullscreen. The Space selector keeps its Space name. A separate native NSTextField toolbar item immediately
+after it shows the focused terminal tab's live title and disappears on other tabs.
 GlassSurfaceRenderingTest renders the actual integrated sidebar and verifies that both surfaces
 continue through their headers without tint overlap, in both palettes.
