@@ -2588,7 +2588,7 @@ do not add plugin ABI requirements or keep an invisible browser view mounted beh
 
 Host glass follows BossTerm's separate 50% tint / 50% background-opacity defaults.
 Content combines these once as `1 - (1 - opacity) * (1 - tint)`; the integrated sidebar
-paints only the tint over the palette ink, with no content fill beneath it. The main tab
+paints that same ink and opacity once, with no content fill beneath it. The main tab
 content owns its fill, so transparent terminal plugins must not paint a second one.
 Saved custom tint values remain intact. Opaque plugins and browser pages keep their own fills.
 

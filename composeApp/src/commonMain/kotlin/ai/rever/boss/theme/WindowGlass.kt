@@ -22,7 +22,14 @@ internal data class WindowGlass(
     val tint: Float = DEFAULT_GLASS_TINT,
     val opacity: Float = DEFAULT_GLASS_OPACITY,
 ) {
-    val chromeOpacity: Float get() = if (installed && coverage in setOf("sidebar", "window")) safeTint else 1f
+    val chromeOpacity: Float
+        get() =
+            when {
+                !installed -> 1f
+                coverage == "window" -> contentOpacity
+                coverage == "sidebar" -> safeTint
+                else -> 1f
+            }
 
     // BossTerm paints the background opacity and tint as one combined fill.
     val contentOpacity: Float
@@ -43,7 +50,7 @@ internal fun GlassAppSurfaces(content: @Composable () -> Unit) {
     val surfaces =
         colors.copy(
             ink = colors.ink.copy(alpha = glass.contentOpacity),
-            panel = colors.panel.copy(alpha = glass.chromeOpacity),
+            panel = (if (glass.installed) colors.ink else colors.panel).copy(alpha = glass.chromeOpacity),
         )
     MaterialTheme(colors = MaterialTheme.colors.copy(background = surfaces.ink)) {
         CompositionLocalProvider(LocalBossColors provides surfaces) {

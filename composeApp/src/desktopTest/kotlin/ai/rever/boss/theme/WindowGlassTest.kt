@@ -8,7 +8,7 @@ import kotlin.test.assertTrue
 
 class WindowGlassTest {
     @Test
-    fun `BossTerm defaults combine tint and opacity without stacking sidebar fill`() {
+    fun `BossTerm defaults combine tint and opacity equally across sidebar and content`() {
         val settings = AppThemeSettings()
         val glass =
             WindowGlass(
@@ -17,7 +17,7 @@ class WindowGlassTest {
                 tint = settings.glassTint,
                 opacity = settings.glassOpacity,
             )
-        assertEquals(0.5f, glass.chromeOpacity)
+        assertEquals(glass.contentOpacity, glass.chromeOpacity)
         assertEquals(0.75f, glass.contentOpacity)
         assertEquals(0f, glass.copy(tint = 0f, opacity = 0f).contentOpacity)
         assertEquals(1f, glass.copy(opacity = 1f).contentOpacity)
