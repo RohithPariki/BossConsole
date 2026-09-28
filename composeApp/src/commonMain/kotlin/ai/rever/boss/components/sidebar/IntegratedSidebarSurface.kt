@@ -5,6 +5,7 @@ import ai.rever.boss.components.window_panel.components.main_window_panels.TabBa
 import ai.rever.boss.components.window_panel.components.main_window_panels.overlayRegionInWindow
 import ai.rever.boss.components.window_panel.components.main_window_panels.rememberToggleCollapseAction
 import ai.rever.boss.plugin.ui.BossTheme
+import ai.rever.boss.theme.sidebarGlassEnabled
 import ai.rever.boss.utils.SystemUtils
 import androidx.compose.foundation.background
 import androidx.compose.foundation.hoverable
@@ -21,6 +22,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
@@ -37,12 +39,13 @@ internal fun integratedSidebarSurface(
     extendsIntoTitleBar: Boolean,
 ): Modifier {
     val colors = BossTheme.colors
-    if (!enabled) return Modifier.background(colors.raised)
+    val glass = sidebarGlassEnabled
+    if (!enabled) return Modifier.background(if (glass) Color.Transparent else colors.raised)
     var top by remember { mutableFloatStateOf(0f) }
     val nativeFrame = SystemUtils.isMacOS && extendsIntoTitleBar
     return Modifier
         // Paint beneath the outer gap and clipped corners, before applying the panel inset.
-        .background(colors.raised)
+        .background(if (glass) Color.Transparent else colors.raised)
         .padding(start = 4.dp, end = 4.dp, bottom = 4.dp, top = if (nativeFrame) 0.dp else 4.dp)
         .onGloballyPositioned { top = it.positionInRoot().y }
         .drawBehind {

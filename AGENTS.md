@@ -2565,3 +2565,9 @@ background and Compose chrome use the same tint. Menus and dialogs retain opaque
 `BOSS_TEST_NATIVE_GLASS=1 ./gradlew :composeApp:desktopTest --tests '*MacWindowGlassSmokeTest'`
 is an opt-in macOS smoke test using its own small unfocusable window. It verifies native install,
 light/clear updates, and detach; it does not establish visual correctness of an entire app layout.
+
+The vertical sidebar uses `SidebarGlass` washes only while the native backdrop is active.
+`IntegratedSidebarSurface` owns its panel tint; `WindowVerticalTabBar.surfacePainted` prevents
+painting the same translucent fill twice. Keep the outer gap transparent in glass mode. Favorites,
+selection fills and inset hairline separators follow BossTerm's sidebar treatment; do not change
+shared palette tokens, menu surfaces, or the non-glass layout to achieve this.

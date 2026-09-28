@@ -2824,6 +2824,7 @@ private fun WindowBarRow(
                     expansion = expansion,
                     width = barWidth,
                     collapsed = bar.railShown,
+                    surfacePainted = hideCollapsedRail && !bar.railShown,
                     onToggleCollapse = integratedSidebarToggle(bar, reveal).takeUnless { hideCollapsedRail },
                     tabDragComponent = tabDragComponent,
                     footer = footer,
