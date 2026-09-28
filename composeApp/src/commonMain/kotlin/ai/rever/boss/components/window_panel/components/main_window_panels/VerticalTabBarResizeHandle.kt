@@ -24,13 +24,12 @@ import androidx.compose.ui.unit.dp
  * between the bar and the content, which meant the bar's contents ended 6dp short of the boundary
  * where they used to end 1dp short - a margin down the bar's right edge that nobody asked for.
  *
- * So it takes no layout width at all and sits over the bar's last few dp instead. That band is the
- * horizontal padding every row in the bar already carries, so the overlay lands on space rather
- * than on a tab's close button. It has to be over the BAR rather than over the content, because
+ * It takes no layout width and covers the trailing 10dp inside the sidebar, making the resize
+ * cursor and drag easier to acquire without adding a visible strip. It stays inside the BAR because
  * JxBrowser composites its surface above the Compose scene and a band over a browser pane would
  * never see the pointer.
  */
-private val RESIZE_BAND = 5.dp
+private val RESIZE_BAND = 10.dp
 
 @Composable
 internal fun BoxScope.VerticalTabBarResizeHandle(
