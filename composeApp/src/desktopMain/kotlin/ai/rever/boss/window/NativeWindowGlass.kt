@@ -11,6 +11,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.awt.ComposeWindow
 import java.awt.event.ComponentAdapter
@@ -28,7 +29,8 @@ internal fun rememberNativeWindowGlass(
     var installed by remember(window) { mutableStateOf(false) }
     val mac = SystemUtils.isMacOS
     val enabled = mac && isGlassTheme(theme.id) && settings.glassCoverage in setOf("sidebar", "window")
-    DisposableEffect(window, enabled, theme.isLight, settings.glassStyle, fullscreen) {
+    val currentFullscreen by rememberUpdatedState(fullscreen)
+    DisposableEffect(window, enabled, theme.isLight, settings.glassStyle) {
         var controller: MacWindowGlass? = null
 
         fun update() {
@@ -41,7 +43,7 @@ internal fun rememberNativeWindowGlass(
                             .IntSize(window.width.coerceAtLeast(1), window.height.coerceAtLeast(1)),
                         !theme.isLight,
                         settings.glassStyle == "clear",
-                        fullscreen,
+                        currentFullscreen,
                     ),
                 )
             }

@@ -19,6 +19,7 @@ internal class MacWindowGlass(
     private val onInstalled: (Boolean) -> Unit,
 ) : AutoCloseable {
     private val window = Pointer(handle)
+    private val fullscreenBackdrop = MacFullscreenBackdrop(window)
 
     @Volatile private var closed = false
     private var view: Pointer? = null
@@ -78,6 +79,11 @@ internal class MacWindowGlass(
             send(parent, "addSubview:positioned:relativeTo:", effect, -1L, content)
         }
         send(effect, "setFrameSize:", GlassSize(request.size.width.toDouble(), request.size.height.toDouble()))
+        fullscreenBackdrop.refresh(effect, request)
+        if (MacToolbarRuntime.supports(effect, "setBlendingMode:")) {
+            // Fullscreen glass samples our wallpaper sibling; windowed glass samples the desktop.
+            send(effect, "setBlendingMode:", if (request.fullscreen) 1L else 0L)
+        }
         val name = if (request.dark) "NSAppearanceNameDarkAqua" else "NSAppearanceNameAqua"
         val appearance = pointer(clazz("NSAppearance"), "appearanceNamed:", string(name))
         send(effect, "setAppearance:", appearance)
@@ -107,6 +113,7 @@ internal class MacWindowGlass(
     }
 
     private fun remove() {
+        fullscreenBackdrop.close()
         view?.let {
             send(it, "removeFromSuperview")
             send(it, "release")

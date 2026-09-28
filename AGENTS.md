@@ -2571,3 +2571,10 @@ The vertical sidebar uses `SidebarGlass` washes only while the native backdrop i
 painting the same translucent fill twice. Keep the outer gap transparent in glass mode. Favorites,
 selection fills and inset hairline separators follow BossTerm's sidebar treatment; do not change
 shared palette tokens, menu surfaces, or the non-glass layout to achieve this.
+
+Fullscreen glass has an owned `MacFullscreenBackdrop` behind the effect view. It reads the
+current display's wallpaper through NSWorkspace, caches the still image while windowed, and
+aspect-fills a CALayer in fullscreen; unreadable/dynamic-only wallpapers get a theme-colored
+fallback. Keep the controller alive across fullscreen transitions so the windowed image survives
+when a fullscreen Space has no desktop-image URL. Do not capture the user's screen, replace AWT's
+contentView, or leave the wallpaper view attached after exiting fullscreen or disabling glass.
