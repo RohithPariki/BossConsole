@@ -33,11 +33,12 @@ import java.nio.file.Paths
  * address. Every caller already treats null as "could not determine the
  * executable" and falls back.
  *
- * `localhost` is the exception, because it is not a server: `file://localhost/x`
- * is the local `/x`. The Unix provider rejects every authority, `localhost`
- * included, where `URI.path` used to answer correctly, so the redundant host is
- * dropped first - the same normalisation [OsOpenArguments] applies to file URLs
- * handed over by a file manager.
+ * `localhost` is handled carefully: on Windows, `file://localhost/share/...` can
+ * name a genuine UNC share (`\\localhost\share\...`), so `Paths.get(uri)` is
+ * attempted first. If the filesystem provider rejects the authority (on Unix
+ * platforms where any authority throws, or on Windows when given a path like
+ * `file://localhost/C:/...`), a `localhost` authority is stripped as naming
+ * this machine rather than a network server.
  */
 internal object CodeSourceLocation {
     private val logger = BossLogger.forComponent("CodeSourceLocation")
@@ -74,7 +75,15 @@ internal object CodeSourceLocation {
             }
 
             else -> {
-                runCatching { Paths.get(withoutLocalhost(uri)).toFile() }
+                val resolved =
+                    runCatching { Paths.get(uri).toFile() }.recoverCatching { error ->
+                        if (uri.authority.equals("localhost", ignoreCase = true)) {
+                            Paths.get(withoutLocalhost(uri)).toFile()
+                        } else {
+                            throw error
+                        }
+                    }
+                resolved
                     .onFailure {
                         logger.debug(
                             LogCategory.SYSTEM,
