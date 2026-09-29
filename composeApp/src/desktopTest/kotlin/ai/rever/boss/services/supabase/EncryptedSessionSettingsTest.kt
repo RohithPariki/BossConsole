@@ -135,11 +135,18 @@ class EncryptedSessionSettingsTest {
         assertTrue(key.isFile, "key file must exist after initialization")
         assertTrue(key.length() > 0, "key file must never exist empty")
         assertEquals(32, Base64.getDecoder().decode(key.readText().trim()).size)
+        val lock = File(directory, "$KEY_FILE_NAME.lock")
+        assertTrue(lock.isFile, "lock sidecar must exist after initialization")
         if (Files.getFileAttributeView(key.toPath(), PosixFileAttributeView::class.java) != null) {
             assertEquals(
                 setOf(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE),
                 Files.getPosixFilePermissions(key.toPath()),
                 "fresh key must be owner-only (0600)",
+            )
+            assertEquals(
+                setOf(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE),
+                Files.getPosixFilePermissions(lock.toPath()),
+                "lock sidecar must be owner-only (0600)",
             )
         }
     }
