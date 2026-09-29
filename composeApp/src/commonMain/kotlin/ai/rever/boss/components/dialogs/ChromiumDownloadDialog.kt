@@ -58,7 +58,8 @@ private fun DownloadSurface(
                 .width(450.dp)
                 .wrapContentHeight(),
         shape = RoundedCornerShape(8.dp),
-        color = BossTheme.colors.panel,
+        // Keep download text readable when the window uses transparent glass surfaces.
+        color = BossTheme.colors.panel.copy(alpha = 1f),
     ) {
         Column(
             modifier = Modifier.padding(24.dp),

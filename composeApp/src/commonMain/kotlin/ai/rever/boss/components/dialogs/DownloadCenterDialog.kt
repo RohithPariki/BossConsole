@@ -90,7 +90,8 @@ fun DownloadCenterDialog(onDismiss: () -> Unit) {
                 Text("Minimize", fontSize = 13.sp)
             }
         },
-        backgroundColor = BossTheme.colors.panel,
+        // Dialogs do not have the main window's native glass backdrop.
+        backgroundColor = BossTheme.colors.panel.copy(alpha = 1f),
         contentColor = BossTheme.colors.textPrimary,
     )
 }
