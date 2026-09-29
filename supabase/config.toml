@@ -279,7 +279,7 @@ max_frequency = "5s"
 # Google and Apple back "Continue with Google / Apple" on the BOSS login screen. They stay
 # disabled here so `supabase start` works without credentials; to test locally, export the env
 # vars below and flip `enabled`. PRODUCTION is configured in the Dashboard (Auth -> Providers),
-# with both providers' redirect URI set to https://<project>.supabase.co/auth/v1/callback.
+# with both providers' redirect URI set to https://api.risaboss.com/auth/v1/callback.
 # Setup and the Apple secret rotation are in docs/OAUTH_SIGN_IN_SETUP.md.
 [auth.external.google]
 enabled = false

@@ -10,7 +10,7 @@ Apple credential, only the Supabase session that comes back.
    code-verifier cache (`~/.boss/supabase`), then opens
    `<SUPABASE_URL>/auth/v1/authorize?provider=google|apple&redirect_to=boss://auth/callback&code_challenge=...`
    in the system browser.
-2. The provider returns to Supabase (`https://<project>.supabase.co/auth/v1/callback`), which
+2. The provider returns to Supabase (`https://api.risaboss.com/auth/v1/callback`), which
    redirects to `boss://auth/callback?code=...`, or `?error=...` on failure.
 3. The OS hands the link to BOSS. `AuthDeepLinks.parse` reads it as `OAuthCallback`, and
    `OAuthSignInService.complete` exchanges the code with `exchangeCodeForSession`. The existing
@@ -52,9 +52,12 @@ Project `pcnwqamqdnsadranufjv`. Nothing below is committed to the repo.
    Publish the app (external) and complete verification.
 2. Credentials -> Create OAuth client ID -> **Web application** (not Desktop: Supabase performs
    the exchange).
-3. Authorized redirect URI: `https://pcnwqamqdnsadranufjv.supabase.co/auth/v1/callback`, plus
-   the custom-domain equivalent (`https://api.risaboss.com/auth/v1/callback`) if Auth is served
-   through it.
+3. Authorized redirect URIs: `https://api.risaboss.com/auth/v1/callback` (the custom domain,
+   which is the callback Supabase advertises) and
+   `https://pcnwqamqdnsadranufjv.supabase.co/auth/v1/callback`.
+   Configured 2026-09-28: GCP project `boss-455616`, Web client "BOSS Supabase Auth". The app
+   is External and still in Testing, so only listed test users can sign in until it is
+   published.
 4. Paste the client ID and secret into the Supabase Google provider.
 
 ### Apple
@@ -63,8 +66,7 @@ Project `pcnwqamqdnsadranufjv`. Nothing below is committed to the repo.
    enabled.
 2. Identifiers -> Services IDs: create one (for example `ai.rever.boss.signin`). This is the
    Supabase **Client ID**. Configure Sign in with Apple on it: primary App ID above, domain
-   `pcnwqamqdnsadranufjv.supabase.co`, return URL
-   `https://pcnwqamqdnsadranufjv.supabase.co/auth/v1/callback`.
+   `api.risaboss.com`, return URL `https://api.risaboss.com/auth/v1/callback`.
 3. Keys: create a key with Sign in with Apple, download the `.p8` once, note the Key ID and the
    Team ID.
 4. Generate the client secret JWT from the `.p8` (Supabase's Apple provider page has a
