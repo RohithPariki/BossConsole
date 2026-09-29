@@ -9,9 +9,12 @@ import io.github.jan.supabase.auth.SettingsCodeVerifierCache
 import io.github.jan.supabase.auth.SettingsSessionManager
 import java.io.File
 import java.io.IOException
+import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
+import java.nio.channels.SeekableByteChannel
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
+import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.PosixFilePermissions
 import java.security.GeneralSecurityException
@@ -184,7 +187,7 @@ internal class EncryptedSessionSettings(
             // Never replace or delete this sidecar: all processes must lock the same inode.
             // The JVM monitor prevents overlapping FileLocks between threads in this process.
             val lockFile = File(keyFile.absolutePath + ".lock")
-            createKeyFileExclusively(lockFile)
+            createLockFileExclusively(lockFile)
             FileChannel.open(lockFile.toPath(), StandardOpenOption.WRITE).use { channel ->
                 channel.lock().use { loadOrCreateKeyLocked(keyFile) }
             }
@@ -201,7 +204,7 @@ internal class EncryptedSessionSettings(
             )
         }
         val fresh = ByteArray(KEY_BYTES).also(secureRandom::nextBytes)
-        keyFile.atomicWriteText(base64Encoder.encodeToString(fresh))
+        writeKeyFile(keyFile, base64Encoder.encodeToString(fresh))
         return SecretKeySpec(fresh, "AES")
     }
 
@@ -216,12 +219,57 @@ internal class EncryptedSessionSettings(
     }
 
     /**
+     * Writes the base64 key exclusively when creating fresh so the file is never observed
+     * empty by another process. Falls back to atomic replacement if regenerating an
+     * unusable existing file.
+     */
+    private fun writeKeyFile(
+        keyFile: File,
+        encodedKey: String,
+    ) {
+        keyFile.parentFile?.mkdirs()
+        val path = keyFile.toPath()
+        val created = writeKeyFileExclusively(path, encodedKey)
+        if (!created) {
+            keyFile.atomicWriteText(encodedKey)
+        }
+    }
+
+    private fun writeKeyFileExclusively(
+        path: Path,
+        encodedKey: String,
+    ): Boolean {
+        val bytes = ByteBuffer.wrap(encodedKey.toByteArray(Charsets.UTF_8))
+        return try {
+            openExclusiveKeyChannel(path).use { channel ->
+                (channel as? FileChannel)?.let { fc ->
+                    fc.write(bytes)
+                    fc.force(true)
+                } ?: channel.write(bytes)
+            }
+            true
+        } catch (_: FileAlreadyExistsException) {
+            false
+        }
+    }
+
+    private fun openExclusiveKeyChannel(path: Path): SeekableByteChannel {
+        val options = setOf(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
+        return if (path.fileSystem.supportedFileAttributeViews().contains("posix")) {
+            val perms = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------"))
+            Files.newByteChannel(path, options, perms)
+        } else {
+            Files.newByteChannel(path, options)
+        }
+    }
+
+    /**
      * Creates the persistent lock file owner-only; an existing sidecar is reused as-is.
      */
-    private fun createKeyFileExclusively(keyFile: File): Boolean {
-        keyFile.parentFile?.mkdirs()
+    private fun createLockFileExclusively(lockFile: File): Boolean {
+        lockFile.parentFile?.mkdirs()
         return try {
-            val path = keyFile.toPath()
+            val path = lockFile.toPath()
             if (path.fileSystem.supportedFileAttributeViews().contains("posix")) {
                 // Owner-only from the file's first byte, matching atomicWriteText's contract.
                 Files.createFile(
