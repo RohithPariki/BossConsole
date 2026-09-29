@@ -1,0 +1,93 @@
+# Google and Apple sign-in
+
+The login screen offers **Continue with Google** and **Continue with Apple** beside the email
+magic link and passkeys. Both are Supabase Auth OAuth providers; BOSS never sees a Google or
+Apple credential, only the Supabase session that comes back.
+
+## How the desktop flow works
+
+1. `OAuthSignInService.start` writes a fresh PKCE verifier into Auth's encrypted
+   code-verifier cache (`~/.boss/supabase`), then opens
+   `<SUPABASE_URL>/auth/v1/authorize?provider=google|apple&redirect_to=boss://auth/callback&code_challenge=...`
+   in the system browser.
+2. The provider returns to Supabase (`https://<project>.supabase.co/auth/v1/callback`), which
+   redirects to `boss://auth/callback?code=...`, or `?error=...` on failure.
+3. The OS hands the link to BOSS. `AuthDeepLinks.parse` reads it as `OAuthCallback`, and
+   `OAuthSignInService.complete` exchanges the code with `exchangeCodeForSession`. The existing
+   session collector in `CoreAuthService` takes it from there.
+
+Points worth knowing before changing it:
+
+- **No localhost callback server.** supabase-kt's own `signInWith(Google)` on desktop starts a
+  ktor server, which the host build excludes on purpose (`KtorServerAbsentFromHostTest`).
+- **PKCE is per call, not global.** `flowType` stays at its default. Under a global
+  `FlowType.PKCE` the magic-link send would also write a verifier into the same single-slot
+  cache and could clobber a sign-in in progress.
+- **A callback nobody started is ignored.** `boss://` is registered with the OS, so any page can
+  open one. The service acts only while a sign-in it started is waiting (10 minutes), and the
+  code is useless without the verifier, which never leaves the machine.
+- **The system browser, not JxBrowser.** Google refuses sign-in inside embedded web views.
+- **Linux** now registers `boss://` at startup (`LinuxProtocolHandler`, a hidden
+  `boss-url-handler.desktop`), and only when nothing else holds the scheme. The waiting screen
+  also accepts a pasted `boss://auth/callback` link for a machine where the hand-off fails.
+- **Accounts link by email.** Supabase links a Google or Apple identity to an existing user with
+  the same verified email, so a magic-link user who picks Google lands in the same account,
+  with the same roles and passkeys. An Apple user who hides their email gets a
+  `privaterelay.appleid.com` address and therefore a separate account, and joins no
+  domain-based organisation.
+
+## Provider setup (production)
+
+Project `pcnwqamqdnsadranufjv`. Nothing below is committed to the repo.
+
+### Supabase
+
+- Dashboard -> Auth -> URL Configuration -> Redirect URLs: add `boss://auth/callback`.
+- Dashboard -> Auth -> Providers -> Google and Apple: enable each and paste the values below.
+
+### Google
+
+1. Google Cloud Console -> APIs & Services -> OAuth consent screen: app name "BOSS", support
+   email, logo, privacy policy and terms URLs; scopes `openid`, `email`, `profile` only.
+   Publish the app (external) and complete verification.
+2. Credentials -> Create OAuth client ID -> **Web application** (not Desktop: Supabase performs
+   the exchange).
+3. Authorized redirect URI: `https://pcnwqamqdnsadranufjv.supabase.co/auth/v1/callback`, plus
+   the custom-domain equivalent (`https://api.risaboss.com/auth/v1/callback`) if Auth is served
+   through it.
+4. Paste the client ID and secret into the Supabase Google provider.
+
+### Apple
+
+1. Apple Developer -> Identifiers: the App ID `ai.rever.boss` with **Sign in with Apple**
+   enabled.
+2. Identifiers -> Services IDs: create one (for example `ai.rever.boss.signin`). This is the
+   Supabase **Client ID**. Configure Sign in with Apple on it: primary App ID above, domain
+   `pcnwqamqdnsadranufjv.supabase.co`, return URL
+   `https://pcnwqamqdnsadranufjv.supabase.co/auth/v1/callback`.
+3. Keys: create a key with Sign in with Apple, download the `.p8` once, note the Key ID and the
+   Team ID.
+4. Generate the client secret JWT from the `.p8` (Supabase's Apple provider page has a
+   generator) and paste it into the Supabase Apple provider.
+
+**The Apple client secret expires after at most six months.** When it lapses, every Apple
+sign-in fails at the exchange. Regenerate it from the same `.p8` before the expiry date and
+record the next date where the team tracks renewals. Store the `.p8` in the team's secret
+manager, never in the repo.
+
+## Local testing
+
+`supabase/config.toml` carries both providers disabled, so `supabase start` needs no
+credentials. To test against the local stack, create a second Google web client whose redirect
+URI is `http://127.0.0.1:54321/auth/v1/callback`, export
+`SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID` / `SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET` (Apple:
+`SUPABASE_AUTH_EXTERNAL_APPLE_CLIENT_ID` / `SUPABASE_AUTH_EXTERNAL_APPLE_SECRET`), set
+`enabled = true` for the provider and restart the stack. Apple rejects `http` return URLs, so
+Apple is tested against a hosted project.
+
+## Compliance notes
+
+Google and Apple act only as identity providers: they learn that a user signed in to BOSS and
+receive no application data. Scopes are the minimum (`openid email profile`, Apple's
+`email name`). Authorization codes, verifiers and tokens are never logged; the callback's
+`toString()` redacts the code.

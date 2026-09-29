@@ -30,6 +30,28 @@ sealed interface AuthDeepLink {
     data class PasskeyAuthenticated(
         val sessionId: String,
     ) : AuthDeepLink
+
+    /**
+     * `boss://auth/callback`, Supabase's redirect back from a Google or Apple sign-in.
+     *
+     * Exactly one of [code] and [error] is set. The code is only half of the exchange: it is
+     * worthless without the PKCE verifier this app stored when it opened the sign-in page, so
+     * a callback nobody started cannot sign anyone in.
+     *
+     * @param code the PKCE authorization code (query `code`)
+     * @param error the provider's or Supabase's error code (`error`, query or fragment)
+     * @param errorDescription the human-readable reason beside [error], for logs only
+     */
+    data class OAuthCallback(
+        val code: String?,
+        val error: String?,
+        val errorDescription: String?,
+    ) : AuthDeepLink {
+        override fun toString(): String {
+            val shownCode = if (code != null) "<redacted>" else "null"
+            return "OAuthCallback(code=$shownCode, error=$error)"
+        }
+    }
 }
 
 /**
@@ -42,7 +64,8 @@ sealed interface AuthDeepLink {
  * shapes:
  *
  * - the scheme is `boss` (case-insensitive, as URI schemes are), and the host+path is exactly
- *   `auth/verify`, `passkey/registered` or `passkey/authenticated`, case-sensitive, since the
+ *   `auth/verify`, `auth/callback`, `passkey/registered` or `passkey/authenticated`,
+ *   case-sensitive, since the
  *   server emits exactly those and case-folding would take a lookalike host;
  * - a session id lives in the query only, exactly once, and is a UUID like the ones
  *   `PasskeyAuthService` mints; a copy in the fragment is an ambiguous smuggle and refuses the
@@ -57,6 +80,8 @@ sealed interface AuthDeepLink {
  *   and every character that escapes is a shape no producer's token carries;
  * - the type is the fragment's or else the query's `type`, `[a-z_]` up to 32, defaulting to
  *   `magiclink`.
+ * - an OAuth callback carries exactly one of a query `code` or an `error` code, never both,
+ *   each exactly once; a `code` in the fragment is a smuggle and refuses the link.
  *
  * Anything else is refused with `null`: an unknown host or path, a duplicate of a parameter
  * this parser reads, a missing token, or a value not of the producer's shape. Unknown extra
@@ -67,16 +92,26 @@ object AuthDeepLinks {
     private const val MAGIC_LINK_HOST_PATH = "auth/verify"
     private const val PASSKEY_REGISTERED_HOST_PATH = "passkey/registered"
     private const val PASSKEY_AUTHENTICATED_HOST_PATH = "passkey/authenticated"
+    private const val OAUTH_CALLBACK_HOST_PATH = "auth/callback"
 
     /** The ceremony routes, for the diagnostic [isAuthShaped] check only. */
     private val AUTH_HOST_PATHS =
-        listOf(MAGIC_LINK_HOST_PATH, PASSKEY_REGISTERED_HOST_PATH, PASSKEY_AUTHENTICATED_HOST_PATH)
+        listOf(
+            MAGIC_LINK_HOST_PATH,
+            PASSKEY_REGISTERED_HOST_PATH,
+            PASSKEY_AUTHENTICATED_HOST_PATH,
+            OAUTH_CALLBACK_HOST_PATH,
+        )
 
     private const val ACCESS_TOKEN_PARAM = "access_token"
     private const val TOKEN_PARAM = "token"
     private const val TYPE_PARAM = "type"
     private const val SESSION_ID_PARAM = "sessionId"
     private const val DEFAULT_TYPE = "magiclink"
+    private const val CODE_PARAM = "code"
+    private const val ERROR_PARAM = "error"
+    private const val ERROR_DESCRIPTION_PARAM = "error_description"
+    private const val MAX_ERROR_DESCRIPTION_LENGTH = 300
 
     /** The session ids `PasskeyAuthService` mints with `UUID.randomUUID()`. */
     private val sessionIdShape =
@@ -84,6 +119,12 @@ object AuthDeepLinks {
 
     /** Every producer's token: Supabase JWTs and the manual-paste shape, bounded to keep links sane. */
     private val tokenShape = Regex("[A-Za-z0-9._~-]{1,2048}")
+
+    /** Supabase's PKCE auth codes, a UUID today; bounded and URL-safe so a format change still parses. */
+    private val authCodeShape = Regex("[A-Za-z0-9._~-]{1,512}")
+
+    /** OAuth 2.0 error codes (`access_denied`, `server_error`, ...). */
+    private val errorShape = Regex("[a-z_]{1,64}")
 
     /** The flow names the redirect function writes beside the token. */
     private val typeShape = Regex("[a-z_]{1,32}")
@@ -98,6 +139,7 @@ object AuthDeepLinks {
             MAGIC_LINK_HOST_PATH -> magicLinkOf(sections)
             PASSKEY_REGISTERED_HOST_PATH -> passkeyLinkOf(sections, registered = true)
             PASSKEY_AUTHENTICATED_HOST_PATH -> passkeyLinkOf(sections, registered = false)
+            OAUTH_CALLBACK_HOST_PATH -> oauthCallbackOf(sections)
             else -> null
         }
     }
@@ -188,6 +230,48 @@ object AuthDeepLinks {
             null
         }
     }
+
+    /**
+     * [sections] as an OAuth callback, or null unless it carries exactly one of a URL-safe
+     * `code` (query only, as the PKCE redirect writes it) or an `error` code (query or
+     * fragment, never both), each exactly once.
+     */
+    private fun oauthCallbackOf(sections: Sections): AuthDeepLink? {
+        val ambiguous =
+            sections.fragment.containsKey(CODE_PARAM) ||
+                isDuplicated(sections.query, CODE_PARAM, ERROR_PARAM, ERROR_DESCRIPTION_PARAM) ||
+                isDuplicated(sections.fragment, ERROR_PARAM, ERROR_DESCRIPTION_PARAM)
+        val code = sections.query[CODE_PARAM]?.first()
+        val errors = listOfNotNull(sections.query[ERROR_PARAM]?.first(), sections.fragment[ERROR_PARAM]?.first())
+        return when {
+            ambiguous -> {
+                null
+            }
+
+            code != null && errors.isEmpty() -> {
+                code.takeIf(authCodeShape::matches)?.let { AuthDeepLink.OAuthCallback(it, null, null) }
+            }
+
+            code == null && errors.size == 1 -> {
+                val description =
+                    (sections.query[ERROR_DESCRIPTION_PARAM] ?: sections.fragment[ERROR_DESCRIPTION_PARAM])
+                        ?.first()
+                        ?.let(::decodeDescription)
+                errors.single().takeIf(errorShape::matches)?.let { AuthDeepLink.OAuthCallback(null, it, description) }
+            }
+
+            else -> {
+                null
+            }
+        }
+    }
+
+    /** A percent/plus-encoded error description as bounded printable text, or null if undecodable. */
+    private fun decodeDescription(raw: String): String? =
+        runCatching { java.net.URLDecoder.decode(raw, Charsets.UTF_8) }
+            .getOrNull()
+            ?.filter { !it.isISOControl() }
+            ?.take(MAX_ERROR_DESCRIPTION_LENGTH)
 
     /**
      * The `name=value` pairs of one URI section, grouped by name. A repeated name keeps every
