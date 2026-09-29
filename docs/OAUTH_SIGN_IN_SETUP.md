@@ -56,8 +56,10 @@ Project `pcnwqamqdnsadranufjv`. Nothing below is committed to the repo.
    which is the callback Supabase advertises) and
    `https://pcnwqamqdnsadranufjv.supabase.co/auth/v1/callback`.
    Configured 2026-09-28: GCP project `boss-455616`, Web client "BOSS Supabase Auth". The app
-   is External and still in Testing, so only listed test users can sign in until it is
-   published.
+   is External and was published to production the same day, with no logo so it needs no
+   Google verification. The consent screen links home https://www.risaboss.com, privacy
+   https://www.risalabs.ai/privacy-policy and terms https://www.risalabs.ai/terms-of-use
+   (BOSS has no pages of its own yet). Adding a logo later triggers verification.
 4. Paste the client ID and secret into the Supabase Google provider.
 
 ### Apple
