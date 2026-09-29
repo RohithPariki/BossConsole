@@ -72,6 +72,16 @@ Project `pcnwqamqdnsadranufjv`. Nothing below is committed to the repo.
 4. Generate the client secret JWT from the `.p8` (Supabase's Apple provider page has a
    generator) and paste it into the Supabase Apple provider.
 
+Configured 2026-09-28: team `7X4CJM22GN`, primary App ID `ai.rever.boss` (Sign in with Apple
+enabled), Services ID `ai.rever.boss.signin` (domains `api.risaboss.com` and
+`pcnwqamqdnsadranufjv.supabase.co`, return URLs on both), key "BOSS Sign in with Apple",
+Key ID `84AS6PR56Q`. **The current client secret expires 2027-03-28.**
+
+To regenerate it, sign an ES256 JWT with the `.p8`: header `{"alg":"ES256","kid":"<Key ID>"}`,
+claims `iss` = Team ID, `iat` = now, `exp` = now + at most 15777000 seconds,
+`aud` = `https://appleid.apple.com`, `sub` = the Services ID. Paste it into the Supabase
+Apple provider's Secret Key field.
+
 **The Apple client secret expires after at most six months.** When it lapses, every Apple
 sign-in fails at the exchange. Regenerate it from the same `.p8` before the expiry date and
 record the next date where the team tracks renewals. Store the `.p8` in the team's secret
