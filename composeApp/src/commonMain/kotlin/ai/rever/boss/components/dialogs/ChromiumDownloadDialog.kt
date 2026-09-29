@@ -1,6 +1,7 @@
 package ai.rever.boss.components.dialogs
 
 import ai.rever.boss.plugin.ui.BossTheme
+import ai.rever.boss.theme.dialogPanelColor
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -58,8 +59,7 @@ private fun DownloadSurface(
                 .width(450.dp)
                 .wrapContentHeight(),
         shape = RoundedCornerShape(8.dp),
-        // Keep download text readable when the window uses transparent glass surfaces.
-        color = BossTheme.colors.panel.copy(alpha = 1f),
+        color = dialogPanelColor,
     ) {
         Column(
             modifier = Modifier.padding(24.dp),
