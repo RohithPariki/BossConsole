@@ -29,9 +29,9 @@ import java.nio.file.Paths
  * install.
  *
  * On a platform with no UNC concept the provider rejects the authority outright,
- * and null is the honest answer: `\server\share` is not a path such a host can
- * address. Every caller already treats null as "could not determine the
- * executable" and falls back.
+ * and for a server other than `localhost`, null is the honest answer: `\server\share`
+ * is not a path such a host can address. Every caller already treats null as
+ * "could not determine the executable" and falls back.
  *
  * `localhost` is handled carefully: on Windows, `file://localhost/share/...` can
  * name a genuine UNC share (`\\localhost\share\...`), so `Paths.get(uri)` is
@@ -75,15 +75,8 @@ internal object CodeSourceLocation {
             }
 
             else -> {
-                val resolved =
-                    runCatching { Paths.get(uri).toFile() }.recoverCatching { error ->
-                        if (uri.authority.equals("localhost", ignoreCase = true)) {
-                            Paths.get(withoutLocalhost(uri)).toFile()
-                        } else {
-                            throw error
-                        }
-                    }
-                resolved
+                runCatching { Paths.get(uri).toFile() }
+                    .recoverCatching { Paths.get(withoutLocalhost(uri)).toFile() }
                     .onFailure {
                         logger.debug(
                             LogCategory.SYSTEM,

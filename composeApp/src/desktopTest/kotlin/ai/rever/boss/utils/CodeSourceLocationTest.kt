@@ -80,14 +80,18 @@ class CodeSourceLocationTest {
         // rebasing to \share\... on the current drive. On hosts with no UNC concept,
         // the provider rejects the authority and falls back to the stripped local path.
         val isWindows = System.getProperty("os.name").startsWith("Windows", ignoreCase = true)
-        if (isWindows && resolved != null) {
-            assertTrue(
-                resolved.path.contains("localhost"),
-                "resolved to ${resolved.path}, which dropped the localhost server",
-            )
+        if (isWindows) {
+            assertNotNull(resolved)
             assertTrue(
                 resolved.path.startsWith("""\\localhost\share"""),
                 "resolved to ${resolved.path}, which must remain a UNC path",
+            )
+        } else {
+            assertNotNull(resolved)
+            assertEquals(
+                "/share/BOSS/app/BOSS.jar",
+                resolved.path.replace('\\', '/'),
+                "resolved to ${resolved.path}, which should be the local path",
             )
         }
     }
